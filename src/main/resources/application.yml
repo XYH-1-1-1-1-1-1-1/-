@@ -1,0 +1,74 @@
+# AI 模拟面试与能力提升软件 - 配置文件
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: interview-simulation
+  
+  # 数据源配置 - SQLite
+  datasource:
+    url: jdbc:sqlite:./data/interview.db
+    driver-class-name: org.sqlite.JDBC
+  
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        format_sql: true
+  
+  # Jackson 配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+# 应用配置
+app:
+  # 大模型 API 配置 - 使用免费开源 API
+  # 推荐使用：OpenRouter (聚合多个免费模型) 或 HuggingFace Inference API
+  # 注册地址：https://openrouter.ai/ 获取免费 API Key
+  llm:
+    # API 提供商：openrouter / huggingface / ollama
+    provider: openrouter
+    # API Key (用户自行申请)
+    api-key: ${LLM_API_KEY:your-api-key-here}
+    # API 基础 URL
+    base-url: https://openrouter.ai/api/v1
+    # 默认模型 (OpenRouter 提供免费额度的模型)
+    model: google/gemma-2-9b-it:free
+    # 备选模型列表
+    fallback-models:
+      - meta-llama/llama-3-8b-instruct:free
+      - mistralai/mistral-7b-instruct:free
+      - google/gemma-2-9b-it:free
+  
+  # 语音识别 API 配置
+  speech:
+    # 使用浏览器 Web Speech API (前端实现)
+    # 或使用 Azure Speech Service / Google Cloud Speech
+    provider: browser-native
+  
+  # 系统配置
+  system:
+    # 面试超时时间 (分钟)
+    interview-timeout: 30
+    # 每轮回答最大字数
+    max-answer-length: 500
+    # 历史面试记录保留数量
+    max-history-records: 50
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.ruijie.interview: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
