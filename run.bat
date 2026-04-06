@@ -6,47 +6,43 @@ echo   锐捷网络 - 教育行业解决方案
 echo ========================================
 echo.
 
-REM 检查 JAVA_HOME
-if "%JAVA_HOME%"=="" (
-    echo [错误] 未设置 JAVA_HOME 环境变量
-    echo 请确保已安装 JDK 17 或更高版本
-    pause
-    exit /b 1
-)
+REM 自动设置 JAVA_HOME - 使用硬编码路径
+set JAVA_HOME=C:\Program Files\Java\jdk-21.0.10
+set PATH=%JAVA_HOME%\bin;%PATH%
 
-echo [信息] Java 版本:
+echo [INFO] JAVA_HOME: %JAVA_HOME%
+echo [INFO] Java version:
 java -version
 echo.
 
-REM 检查是否设置了 API Key
+REM Check if API Key is set
 if "%LLM_API_KEY%"=="" (
-    echo [警告] 未设置 LLM_API_KEY 环境变量
-    echo 请设置环境变量后重新运行
-    echo 或者在 application.yml 中直接配置 api-key
+    echo [WARNING] LLM_API_KEY environment variable is not set
+    echo Please set the environment variable or configure api-key in application.yml
     echo.
 )
 
-echo [信息] 正在启动应用...
+echo [INFO] Starting application...
 echo.
 
-REM 使用 IntelliJ IDEA 内置 Maven 编译
+REM Use IntelliJ IDEA built-in Maven or system Maven
 if exist "%IDEA_MVN%" (
     call "%IDEA_MVN%" clean package -DskipTests
 ) else (
-    REM 尝试使用系统 Maven
-    mvn clean package -DskipTests
+    REM Try using system Maven
+    call mvn clean package -DskipTests
     if errorlevel 1 (
         echo.
-        echo [错误] Maven 编译失败
-        echo 请使用 IntelliJ IDEA 右键项目 -> Maven -> Compile 进行编译
-        echo 或者在命令行执行：mvn clean package -DskipTests
+        echo [ERROR] Maven build failed
+        echo Please use IntelliJ IDEA to compile: Right-click project -> Maven -> Compile
+        echo Or execute: mvn clean package -DskipTests
         pause
         exit /b 1
     )
 )
 
 echo.
-echo [信息] 启动 Spring Boot 应用...
+echo [INFO] Starting Spring Boot application...
 java -jar target/interview-simulation-1.0.0.jar
 
 pause
