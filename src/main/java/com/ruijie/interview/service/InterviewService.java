@@ -5,7 +5,8 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.ruijie.interview.entity.*;
 import com.ruijie.interview.repository.*;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,10 @@ import java.util.*;
 /**
  * 面试会话服务类 - 核心业务逻辑
  */
-@Slf4j
 @Service
 public class InterviewService {
+
+    private static final Logger log = LoggerFactory.getLogger(InterviewService.class);
 
     @Autowired
     private InterviewSessionRepository sessionRepository;

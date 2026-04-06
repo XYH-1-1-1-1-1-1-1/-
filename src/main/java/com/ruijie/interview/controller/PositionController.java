@@ -5,7 +5,8 @@ import com.ruijie.interview.entity.Question;
 import com.ruijie.interview.service.PositionService;
 import com.ruijie.interview.service.QuestionService;
 import com.ruijie.interview.service.RagService;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,11 +18,12 @@ import java.util.Set;
 /**
  * 岗位控制器
  */
-@Slf4j
 @RestController
 @RequestMapping("/position")
 @CrossOrigin(origins = "*")
 public class PositionController {
+
+    private static final Logger log = LoggerFactory.getLogger(PositionController.class);
 
     @Autowired
     private PositionService positionService;

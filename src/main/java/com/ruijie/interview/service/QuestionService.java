@@ -2,10 +2,11 @@ package com.ruijie.interview.service;
 
 import com.ruijie.interview.entity.Question;
 import com.ruijie.interview.repository.QuestionRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.annotation.PostConstruct;
 import java.util.List;
@@ -14,9 +15,10 @@ import java.util.Optional;
 /**
  * 问题服务类
  */
-@Slf4j
 @Service
 public class QuestionService {
+
+    private static final Logger log = LoggerFactory.getLogger(QuestionService.class);
 
     @Autowired
     private QuestionRepository questionRepository;

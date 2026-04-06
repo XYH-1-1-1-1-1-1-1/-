@@ -4,8 +4,9 @@ import com.ruijie.interview.config.LlmConfig;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
@@ -25,9 +26,10 @@ import java.util.Map;
  * 大语言模型服务 - 调用免费开源 API
  * 支持 OpenRouter、HuggingFace 等提供商
  */
-@Slf4j
 @Service
 public class LlmService {
+
+    private static final Logger log = LoggerFactory.getLogger(LlmService.class);
 
     @Autowired
     private LlmConfig llmConfig;

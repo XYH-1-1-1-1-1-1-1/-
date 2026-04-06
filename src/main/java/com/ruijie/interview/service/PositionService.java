@@ -2,21 +2,23 @@ package com.ruijie.interview.service;
 
 import com.ruijie.interview.entity.Position;
 import com.ruijie.interview.repository.PositionRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * 岗位服务类
  */
-@Slf4j
 @Service
 public class PositionService {
+
+    private static final Logger log = LoggerFactory.getLogger(PositionService.class);
 
     @Autowired
     private PositionRepository positionRepository;

@@ -1,9 +1,6 @@
 package com.ruijie.interview.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
@@ -11,10 +8,22 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "answers")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Answer {
+
+    // 构造函数
+    public Answer() {
+    }
+
+    public Answer(Long sessionId, Long questionId, String userAnswer, String answerType,
+                  Integer durationSeconds, Integer wordCount, String speechFeatures) {
+        this.sessionId = sessionId;
+        this.questionId = questionId;
+        this.userAnswer = userAnswer;
+        this.answerType = answerType;
+        this.durationSeconds = durationSeconds;
+        this.wordCount = wordCount;
+        this.speechFeatures = speechFeatures;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,5 +65,86 @@ public class Answer {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // Getter 和 Setter 方法
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(Long sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public Long getQuestionId() {
+        return questionId;
+    }
+
+    public void setQuestionId(Long questionId) {
+        this.questionId = questionId;
+    }
+
+    public String getUserAnswer() {
+        return userAnswer;
+    }
+
+    public void setUserAnswer(String userAnswer) {
+        this.userAnswer = userAnswer;
+    }
+
+    public String getAnswerType() {
+        return answerType;
+    }
+
+    public void setAnswerType(String answerType) {
+        this.answerType = answerType;
+    }
+
+    public Integer getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Integer durationSeconds) {
+        this.durationSeconds = durationSeconds;
+    }
+
+    public Integer getWordCount() {
+        return wordCount;
+    }
+
+    public void setWordCount(Integer wordCount) {
+        this.wordCount = wordCount;
+    }
+
+    public String getSpeechFeatures() {
+        return speechFeatures;
+    }
+
+    public void setSpeechFeatures(String speechFeatures) {
+        this.speechFeatures = speechFeatures;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

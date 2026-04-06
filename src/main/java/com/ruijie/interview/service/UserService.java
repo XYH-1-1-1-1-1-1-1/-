@@ -2,7 +2,6 @@ package com.ruijie.interview.service;
 
 import com.ruijie.interview.entity.User;
 import com.ruijie.interview.repository.UserRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +12,6 @@ import java.util.Optional;
 /**
  * 用户服务类
  */
-@Slf4j
 @Service
 public class UserService {
 
