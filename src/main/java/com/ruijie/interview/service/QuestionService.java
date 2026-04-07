@@ -79,19 +79,23 @@ public class QuestionService {
         if (questionRepository.count() == 0) {
             log.info("初始化默认题库数据...");
 
-            // 后端开发题库
-            initBackendQuestions();
+            try {
+                // 后端开发题库
+                initBackendQuestions();
 
-            // 前端开发题库
-            initFrontendQuestions();
+                // 前端开发题库
+                initFrontendQuestions();
 
-            // 测试工程师题库
-            initQaQuestions();
+                // 测试工程师题库
+                initQaQuestions();
 
-            // 算法工程师题库
-            initAlgorithmQuestions();
+                // 算法工程师题库
+                initAlgorithmQuestions();
 
-            log.info("默认题库数据初始化完成，共 {} 道题", questionRepository.count());
+                log.info("默认题库数据初始化完成，共 {} 道题", questionRepository.count());
+            } catch (Exception e) {
+                log.warn("默认题库数据初始化失败（SQLite 不支持批量插入获取主键），请手动添加题目数据。错误：{}", e.getMessage());
+            }
         }
     }
 

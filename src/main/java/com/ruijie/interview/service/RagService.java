@@ -75,7 +75,11 @@ public class RagService {
 
     @PostConstruct
     public void init() {
-        loadKnowledgeBase();
+        try {
+            loadKnowledgeBase();
+        } catch (Exception e) {
+            log.warn("知识库加载失败（可能是文件损坏），将重新创建。错误：{}", e.getMessage());
+        }
     }
 
     /**

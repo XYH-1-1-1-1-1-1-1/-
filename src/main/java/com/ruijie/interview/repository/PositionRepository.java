@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface PositionRepository extends JpaRepository<Position, Long> {
     Optional<Position> findByCode(String code);
-    List<Position> findAllByOrderByOrderNum();
+    List<Position> findAllByOrderById();
 }
