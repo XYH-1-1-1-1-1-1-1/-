@@ -10,8 +10,18 @@ spring:
   
   # 数据源配置 - SQLite
   datasource:
-    url: jdbc:sqlite:./data/interview.db
+    url: jdbc:sqlite:./data/interview.db?busy_timeout=5000&locking_mode=EXCLUSIVE
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite 不支持多连接并发写入，设置最大连接数为 1
+      maximum-pool-size: 1
+      minimum-idle: 1
+      # 连接超时时间
+      connection-timeout: 30000
+      # 空闲连接超时
+      idle-timeout: 600000
+      # 最大生命周期
+      max-lifetime: 1800000
   
   # JPA 配置
   jpa:
@@ -22,6 +32,13 @@ spring:
       hibernate:
         dialect: org.hibernate.community.dialect.SQLiteDialect
         format_sql: true
+        # SQLite JDBC 不支持 getGeneratedKeys
+        jdbc:
+          use_get_generated_keys: false
+        # 使用 native 策略（SQLite 的 AUTOINCREMENT）
+        id:
+          generator:
+            strategy: native
   
   # Jackson 配置
   jackson:
