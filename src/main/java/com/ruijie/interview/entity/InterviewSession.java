@@ -48,6 +48,9 @@ public class InterviewSession {
     @Column
     private Integer answeredQuestions;
 
+    @Column
+    private Integer skippedQuestions;
+
     @Column(columnDefinition = "TEXT")
     private String conversationHistory;
 
@@ -124,6 +127,14 @@ public class InterviewSession {
 
     public void setAnsweredQuestions(Integer answeredQuestions) {
         this.answeredQuestions = answeredQuestions;
+    }
+
+    public Integer getSkippedQuestions() {
+        return skippedQuestions;
+    }
+
+    public void setSkippedQuestions(Integer skippedQuestions) {
+        this.skippedQuestions = skippedQuestions;
     }
 
     public String getConversationHistory() {

@@ -235,4 +235,42 @@ public class LlmService {
 
         return simpleChat(prompt, systemPrompt);
     }
+
+    /**
+     * 评估单道题目回答（使用 RAG 知识库）
+     *
+     * @param question 问题
+     * @param answer 回答
+     * @param position 岗位
+     * @param category 问题类别
+     * @param knowledgeContext 相关知识库上下文（由 RAG 提供）
+     * @return 评估结果 JSON 字符串
+     */
+    public String evaluateSingleAnswer(String question, String answer, String position, 
+                                       String category, String knowledgeContext) {
+        String systemPrompt = String.format(
+            "你是一位专业的%s面试官，正在评估候选人对%s类别问题的回答。" +
+            "请根据提供的知识库信息和候选人的回答，从以下维度进行评分（10-100 分，最低 10 分）：" +
+            "1. 技术正确性 (technicalScore) - 回答是否符合技术事实" +
+            "2. 知识深度 (knowledgeDepth) - 回答的深度和广度" +
+            "3. 逻辑思维 (logicScore) - 回答是否逻辑清晰" +
+            "4. 表达清晰 (communicationScore) - 表达是否清晰易懂" +
+            "5. 综合评分 (overallScore) - 综合以上维度的平均分" +
+            "同时返回简短评价 (evaluationComment)。" +
+            "请以 JSON 格式返回评估结果，只返回 JSON 不要有其他说明。",
+            position, category
+        );
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("【问题】\n").append(question).append("\n\n");
+        prompt.append("【候选人回答】\n").append(answer).append("\n\n");
+        
+        if (knowledgeContext != null && !knowledgeContext.isEmpty()) {
+            prompt.append("【参考知识库】\n").append(knowledgeContext).append("\n\n");
+        }
+        
+        prompt.append("请根据以上信息进行评估，返回 JSON 格式的评分结果：");
+
+        return simpleChat(prompt.toString(), systemPrompt);
+    }
 }

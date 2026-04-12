@@ -900,13 +900,43 @@
         }
         
         // 跳过问题
-        function skipQuestion() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex >= 10) {
-                showReport(createMockReport());
-            } else {
-                loadQuestion();
-                document.getElementById('answerInput').value = '';
+        async function skipQuestion() {
+            try {
+                const resp = await fetch(API_BASE + `/interview/${currentSession.id}/skip`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id
+                    })
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    const response = data.data;
+                    
+                    if (response.isFinished) {
+                        // 面试结束，显示报告
+                        showReport(response.report);
+                    } else {
+                        // 继续下一题
+                        currentQuestionIndex++;
+                        loadQuestion();
+                        document.getElementById('answerInput').value = '';
+                        showToast('已跳过此题', 'success');
+                    }
+                } else {
+                    showToast(data.message || '跳过失败', 'error');
+                }
+            } catch (e) {
+                // 本地降级处理
+                currentQuestionIndex++;
+                if (currentQuestionIndex >= 10) {
+                    showToast('跳过所有问题将获得最低分', 'error');
+                    showReport(createMockReport(true)); // 全部跳过给最低分
+                } else {
+                    loadQuestion();
+                    document.getElementById('answerInput').value = '';
+                }
             }
         }
         
@@ -960,14 +990,28 @@
         }
         
         // 创建模拟报告
-        function createMockReport() {
+        function createMockReport(allSkipped) {
+            if (allSkipped) {
+                // 全部跳过给最低分 10 分
+                return {
+                    technicalScore: 10,
+                    communicationScore: 10,
+                    logicScore: 10,
+                    adaptabilityScore: 10,
+                    matchingScore: 10,
+                    overallScore: 10,
+                    strengths: '无',
+                    weaknesses: '候选人跳过了所有问题，未展现任何能力',
+                    suggestions: '建议勇敢尝试回答问题，即使不会也可以展示思考过程'
+                };
+            }
             return {
-                technicalScore: Math.floor(Math.random() * 20) + 70,
-                communicationScore: Math.floor(Math.random() * 20) + 65,
-                logicScore: Math.floor(Math.random() * 20) + 68,
-                adaptabilityScore: Math.floor(Math.random() * 20) + 65,
-                matchingScore: Math.floor(Math.random() * 20) + 70,
-                overallScore: Math.floor(Math.random() * 20) + 68,
+                technicalScore: Math.floor(Math.random() * 20) + 50,
+                communicationScore: Math.floor(Math.random() * 20) + 50,
+                logicScore: Math.floor(Math.random() * 20) + 50,
+                adaptabilityScore: Math.floor(Math.random() * 20) + 50,
+                matchingScore: Math.floor(Math.random() * 20) + 50,
+                overallScore: Math.floor(Math.random() * 20) + 50,
                 strengths: '候选人展现了良好的专业知识基础，对核心概念有清晰理解。回答逻辑清晰，表达流畅。',
                 weaknesses: '部分问题回答不够深入，需要加强对底层原理的理解。项目经验描述可以更具体。',
                 suggestions: '建议加强基础知识学习，多做项目实践，阅读优秀开源项目源码。'
@@ -977,9 +1021,112 @@
         // 加载历史记录
         async function loadHistory() {
             const historyList = document.getElementById('historyList');
-            historyList.innerHTML = '<p style="color: #888; text-align: center;">暂无面试记录</p>';
             
-            // TODO: 从后端加载真实数据
+            try {
+                // 加载面试会话历史
+                const sessionResp = await fetch(API_BASE + `/interview/history/${currentUser.id}`);
+                const sessionData = await sessionResp.json();
+                
+                if (sessionData.code === 200 && sessionData.data && sessionData.data.length > 0) {
+                    const sessions = sessionData.data;
+                    
+                    // 渲染历史记录
+                    historyList.innerHTML = sessions.map(session => {
+                        const date = session.startTime ? new Date(session.startTime).toLocaleString('zh-CN') : '未知时间';
+                        const status = session.status === 'COMPLETED' ? '已完成' : '进行中';
+                        const answered = session.answeredQuestions || 0;
+                        const total = session.totalQuestions || 10;
+                        const skipped = session.skippedQuestions || 0;
+                        
+                        return `
+                            <div class="history-item" onclick="viewSessionReport(${session.id})">
+                                <div class="history-info">
+                                    <h4>${getPositionName(session.positionId)} - ${status}</h4>
+                                    <p>时间：${date} | 进度：${answered}/${total} | 跳过：${skipped}</p>
+                                </div>
+                                <div class="history-score" id="score_${session.id}">加载中...</div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    // 加载每个会话的评分
+                    sessions.forEach(session => {
+                        if (session.status === 'COMPLETED') {
+                            loadSessionScore(session.id);
+                        } else {
+                            document.getElementById(`score_${session.id}`).textContent = '进行中';
+                        }
+                    });
+                } else {
+                    historyList.innerHTML = '<p style="color: #888; text-align: center;">暂无面试记录</p>';
+                }
+            } catch (e) {
+                console.error('加载历史失败', e);
+                historyList.innerHTML = '<p style="color: #888; text-align: center;">加载失败，请重试</p>';
+            }
+        }
+        
+        // 获取岗位名称
+        function getPositionName(positionId) {
+            const names = {
+                'backend': '后端开发工程师',
+                'frontend': '前端开发工程师',
+                'qa': '测试工程师',
+                'algorithm': '算法工程师'
+            };
+            return names[positionId] || positionId || '未知岗位';
+        }
+        
+        // 加载会话评分
+        async function loadSessionScore(sessionId) {
+            try {
+                const resp = await fetch(API_BASE + `/interview/${sessionId}/report`);
+                const data = await resp.json();
+                
+                if (data.code === 200 && data.data) {
+                    const score = data.data.overallScore || 0;
+                    const scoreEl = document.getElementById(`score_${sessionId}`);
+                    if (scoreEl) {
+                        scoreEl.textContent = score + '分';
+                        // 根据分数设置颜色
+                        if (score >= 80) {
+                            scoreEl.style.color = '#00d4ff';
+                        } else if (score >= 60) {
+                            scoreEl.style.color = '#ffa500';
+                        } else {
+                            scoreEl.style.color = '#ff4b2b';
+                        }
+                    }
+                } else {
+                    document.getElementById(`score_${sessionId}`).textContent = '无评分';
+                }
+            } catch (e) {
+                console.error('加载评分失败', e);
+                document.getElementById(`score_${sessionId}`).textContent = '加载失败';
+            }
+        }
+        
+        // 查看会话报告
+        function viewSessionReport(sessionId) {
+            // 跳转到面试结果页面并加载报告
+            switchTab('interview');
+            document.getElementById('interviewStart').classList.add('hidden');
+            document.getElementById('interviewing').classList.add('hidden');
+            document.getElementById('interviewResult').classList.remove('hidden');
+            
+            // 加载报告
+            fetch(API_BASE + `/interview/${sessionId}/report`)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.code === 200 && data.data) {
+                        showReport(data.data);
+                    } else {
+                        showToast('报告加载失败', 'error');
+                    }
+                })
+                .catch(e => {
+                    showToast('报告加载失败：' + e.message, 'error');
+                });
         }
         
         // 保存个人信息

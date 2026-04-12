@@ -69,6 +69,14 @@ CREATE TABLE IF NOT EXISTS answers (
     duration_seconds INTEGER,
     word_count INTEGER,
     speech_features VARCHAR(255),
+    -- 评分相关字段
+    technical_score INTEGER,
+    communication_score INTEGER,
+    logic_score INTEGER,
+    knowledge_depth INTEGER,
+    overall_score INTEGER,
+    evaluation_comment TEXT,
+    is_skipped INTEGER DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
@@ -83,6 +91,7 @@ CREATE TABLE IF NOT EXISTS interview_sessions (
     status VARCHAR(20) NOT NULL,
     total_questions INTEGER,
     answered_questions INTEGER,
+    skipped_questions INTEGER DEFAULT 0,
     conversation_history TEXT,
     duration_seconds INTEGER,
     start_time DATETIME,

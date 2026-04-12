@@ -89,19 +89,17 @@ public class InterviewService {
             throw new RuntimeException("会话已结束");
         }
 
-        // 保存回答
-        Answer userAnswer = new Answer();
-        userAnswer.setSessionId(sessionId);
-        userAnswer.setQuestionId((long) (session.getAnsweredQuestions() + 1));
-        userAnswer.setUserAnswer(answer);
-        userAnswer.setAnswerType(answerType);
-        userAnswer.setWordCount(answer.length());
-        answerRepository.save(userAnswer);
+        // 获取当前问题
+        int questionIndex = session.getAnsweredQuestions() + 1;
+        Question currentQuestion = getCurrentQuestion(session, questionIndex);
+        
+        // 保存回答并使用 RAG 评分
+        Answer userAnswer = scoreAnswerWithRag(sessionId, currentQuestion, answer, answerType, false);
 
         // 更新会话
         session.setAnsweredQuestions(session.getAnsweredQuestions() + 1);
         session.setConversationHistory(appendConversation(session.getConversationHistory(), 
-            session.getAnsweredQuestions(), answer));
+            questionIndex, answer));
 
         // 判断是否结束
         if (session.getAnsweredQuestions() >= session.getTotalQuestions()) {
@@ -113,8 +111,8 @@ public class InterviewService {
             
             sessionRepository.save(session);
             
-            // 生成评估报告
-            EvaluationReport report = generateEvaluationReport(session);
+            // 生成评估报告（基于各题平均分）
+            EvaluationReport report = generateEvaluationReportFromScores(session);
             
             return new InterviewResponse(
                 true,
@@ -135,6 +133,195 @@ public class InterviewService {
             nextQuestion,
             null
         );
+    }
+
+    /**
+     * 跳过问题
+     */
+    @Transactional
+    public InterviewResponse skipQuestion(Long sessionId, Long userId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new RuntimeException("会话不存在：" + sessionId));
+
+        if (!"IN_PROGRESS".equals(session.getStatus())) {
+            throw new RuntimeException("会话已结束");
+        }
+
+        // 记录跳过
+        int questionIndex = session.getAnsweredQuestions() + 1;
+        Question currentQuestion = getCurrentQuestion(session, questionIndex);
+        
+        // 保存跳过记录（最低分 10 分）
+        Answer skippedAnswer = new Answer();
+        skippedAnswer.setSessionId(sessionId);
+        skippedAnswer.setQuestionId((long) questionIndex);
+        skippedAnswer.setUserAnswer("(跳过)");
+        skippedAnswer.setAnswerType("skipped");
+        skippedAnswer.setIsSkipped(true);
+        // 跳过题目给最低分 10 分
+        skippedAnswer.setTechnicalScore(10);
+        skippedAnswer.setCommunicationScore(10);
+        skippedAnswer.setLogicScore(10);
+        skippedAnswer.setKnowledgeDepth(10);
+        skippedAnswer.setOverallScore(10);
+        skippedAnswer.setEvaluationComment("候选人跳过此问题");
+        answerRepository.save(skippedAnswer);
+
+        // 更新跳过计数
+        session.setSkippedQuestions(session.getSkippedQuestions() != null ? session.getSkippedQuestions() + 1 : 1);
+        session.setAnsweredQuestions(session.getAnsweredQuestions() + 1);
+        session.setConversationHistory(appendConversation(session.getConversationHistory(), 
+            questionIndex, "(跳过)"));
+
+        // 判断是否结束
+        if (session.getAnsweredQuestions() >= session.getTotalQuestions()) {
+            session.setStatus("COMPLETED");
+            session.setEndTime(LocalDateTime.now());
+            session.setDurationSeconds(
+                (int) (LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC) - 
+                 session.getStartTime().toEpochSecond(java.time.ZoneOffset.UTC)));
+            
+            sessionRepository.save(session);
+            
+            // 生成评估报告
+            EvaluationReport report = generateEvaluationReportFromScores(session);
+            
+            return new InterviewResponse(
+                true,
+                "面试已结束",
+                null,
+                report
+            );
+        }
+
+        // 获取下一个问题
+        Question nextQuestion = getNextQuestion(session, session.getAnsweredQuestions());
+        
+        sessionRepository.save(session);
+
+        return new InterviewResponse(
+            false,
+            "请回答下一个问题",
+            nextQuestion,
+            null
+        );
+    }
+
+    /**
+     * 使用 RAG 评分保存回答
+     */
+    private Answer scoreAnswerWithRag(Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
+        Answer userAnswer = new Answer();
+        userAnswer.setSessionId(sessionId);
+        userAnswer.setQuestionId(question != null ? question.getId() : 0L);
+        userAnswer.setUserAnswer(answer);
+        userAnswer.setAnswerType(answerType);
+        userAnswer.setWordCount(answer != null ? answer.length() : 0);
+        userAnswer.setIsSkipped(isSkipped);
+
+        if (isSkipped || answer == null || answer.trim().isEmpty()) {
+            // 跳过或空回答给最低分 10 分
+            userAnswer.setTechnicalScore(10);
+            userAnswer.setCommunicationScore(10);
+            userAnswer.setLogicScore(10);
+            userAnswer.setKnowledgeDepth(10);
+            userAnswer.setOverallScore(10);
+            userAnswer.setEvaluationComment("候选人跳过此问题或回答为空");
+        } else {
+            // 使用 RAG 评分
+            try {
+                InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+                if (session != null && question != null) {
+                    String category = question.getCategory() != null ? question.getCategory() : "技术知识";
+                    String evalJson = ragService.evaluateAnswerWithRag(
+                        session.getPositionId(), 
+                        category, 
+                        question.getContent(), 
+                        answer
+                    );
+                    
+                    // 解析评分
+                    JSONObject evalData = parseScoreJson(evalJson);
+                    userAnswer.setTechnicalScore(ensureMinScore(evalData.getInteger("technicalScore")));
+                    userAnswer.setCommunicationScore(ensureMinScore(evalData.getInteger("communicationScore")));
+                    userAnswer.setLogicScore(ensureMinScore(evalData.getInteger("logicScore")));
+                    userAnswer.setKnowledgeDepth(ensureMinScore(evalData.getInteger("knowledgeDepth")));
+                    userAnswer.setOverallScore(ensureMinScore(evalData.getInteger("overallScore")));
+                    userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
+                }
+            } catch (Exception e) {
+                log.error("RAG 评分失败，使用默认分数", e);
+                // 评分失败给最低分
+                userAnswer.setTechnicalScore(10);
+                userAnswer.setCommunicationScore(10);
+                userAnswer.setLogicScore(10);
+                userAnswer.setKnowledgeDepth(10);
+                userAnswer.setOverallScore(10);
+                userAnswer.setEvaluationComment("评分失败，使用默认分数");
+            }
+        }
+
+        return answerRepository.save(userAnswer);
+    }
+
+    /**
+     * 确保分数不低于最低分 10 分
+     */
+    private Integer ensureMinScore(Integer score) {
+        if (score == null || score < 10) {
+            return 10;
+        }
+        return Math.min(score, 100);
+    }
+
+    /**
+     * 解析评分 JSON
+     */
+    private JSONObject parseScoreJson(String jsonStr) {
+        try {
+            int start = jsonStr.indexOf("{");
+            int end = jsonStr.lastIndexOf("}");
+            if (start >= 0 && end > start) {
+                jsonStr = jsonStr.substring(start, end + 1);
+            }
+            return JSON.parseObject(jsonStr);
+        } catch (Exception e) {
+            log.error("解析评分 JSON 失败", e);
+            JSONObject defaultJson = new JSONObject();
+            defaultJson.put("technicalScore", 50);
+            defaultJson.put("communicationScore", 50);
+            defaultJson.put("logicScore", 50);
+            defaultJson.put("knowledgeDepth", 50);
+            defaultJson.put("overallScore", 50);
+            defaultJson.put("evaluationComment", "评分解析失败");
+            return defaultJson;
+        }
+    }
+
+    /**
+     * 获取当前问题
+     */
+    private Question getCurrentQuestion(InterviewSession session, int questionIndex) {
+        int difficulty = 1;
+        if (questionIndex > 2) difficulty = 2;
+        if (questionIndex > 5) difficulty = 3;
+        if (questionIndex > 8) difficulty = 4;
+
+        String[] categories = {"技术知识", "项目经验", "行为题"};
+        String category = categories[(questionIndex - 1) % categories.length];
+
+        List<Question> questions = questionService.findByPositionIdAndCategory(
+            session.getPositionId(), category);
+
+        if (questions.isEmpty()) {
+            questions = questionService.findByPositionId(session.getPositionId());
+        }
+
+        if (questions.isEmpty()) {
+            return generateAiQuestion(session.getPositionId(), category, difficulty);
+        }
+
+        return questions.get((questionIndex - 1) % questions.size());
     }
 
     /**
@@ -199,7 +386,130 @@ public class InterviewService {
     }
 
     /**
-     * 生成评估报告
+     * 基于各题平均分生成评估报告
+     */
+    @Transactional
+    public EvaluationReport generateEvaluationReportFromScores(InterviewSession session) {
+        // 获取所有回答
+        List<Answer> answers = answerRepository.findBySessionIdOrderByQuestionId(session.getId());
+        
+        if (answers.isEmpty()) {
+            // 没有回答记录，使用默认分数
+            return createDefaultReport(session);
+        }
+
+        // 计算各维度平均分
+        int totalTechnical = 0;
+        int totalCommunication = 0;
+        int totalLogic = 0;
+        int totalKnowledge = 0;
+        int totalOverall = 0;
+        int answeredCount = 0;
+        int skippedCount = 0;
+        
+        StringBuilder strengthsBuilder = new StringBuilder();
+        StringBuilder weaknessesBuilder = new StringBuilder();
+        StringBuilder suggestionsBuilder = new StringBuilder();
+        
+        for (Answer answer : answers) {
+            if (answer.getIsSkipped() != null && answer.getIsSkipped()) {
+                skippedCount++;
+                continue;
+            }
+            
+            if (answer.getOverallScore() != null) {
+                totalTechnical += answer.getTechnicalScore() != null ? answer.getTechnicalScore() : 10;
+                totalCommunication += answer.getCommunicationScore() != null ? answer.getCommunicationScore() : 10;
+                totalLogic += answer.getLogicScore() != null ? answer.getLogicScore() : 10;
+                totalKnowledge += answer.getKnowledgeDepth() != null ? answer.getKnowledgeDepth() : 10;
+                totalOverall += answer.getOverallScore();
+                answeredCount++;
+                
+                // 收集评价
+                if (answer.getEvaluationComment() != null && !answer.getEvaluationComment().isEmpty()) {
+                    // 高分作为亮点
+                    if (answer.getOverallScore() >= 70) {
+                        strengthsBuilder.append("第").append(answer.getQuestionId())
+                            .append("题：").append(answer.getEvaluationComment()).append(" ");
+                    } else {
+                        weaknessesBuilder.append("第").append(answer.getQuestionId())
+                            .append("题：").append(answer.getEvaluationComment()).append(" ");
+                    }
+                }
+            }
+        }
+        
+        // 计算平均分（至少有一题才计算）
+        int avgTechnical = answeredCount > 0 ? totalTechnical / answeredCount : 10;
+        int avgCommunication = answeredCount > 0 ? totalCommunication / answeredCount : 10;
+        int avgLogic = answeredCount > 0 ? totalLogic / answeredCount : 10;
+        int avgKnowledge = answeredCount > 0 ? totalKnowledge / answeredCount : 10;
+        int avgOverall = answeredCount > 0 ? totalOverall / answeredCount : 10;
+        
+        // 根据跳过题目数量调整分数（每跳过一题扣 2 分）
+        int skipPenalty = skippedCount * 2;
+        avgOverall = Math.max(10, avgOverall - skipPenalty);
+        
+        // 生成建议
+        if (skippedCount > 0) {
+            suggestionsBuilder.append("面试中跳过了").append(skippedCount)
+                .append("道题目，建议勇敢尝试回答。");
+        }
+        if (avgTechnical < 50) {
+            suggestionsBuilder.append("建议加强基础知识学习。");
+        }
+        if (avgOverall >= 70) {
+            suggestionsBuilder.append("整体表现良好，继续保持。");
+        }
+        
+        // 创建评估报告
+        EvaluationReport report = new EvaluationReport();
+        report.setSessionId(session.getId());
+        report.setUserId(session.getUserId());
+        report.setPositionId(session.getPositionId());
+        report.setTechnicalScore(avgTechnical);
+        report.setCommunicationScore(avgCommunication);
+        report.setLogicScore(avgLogic);
+        report.setAdaptabilityScore(avgKnowledge); // 用知识深度作为应变能力
+        report.setMatchingScore(avgOverall); // 用平均分作为匹配度
+        report.setOverallScore(avgOverall);
+        report.setStrengths(strengthsBuilder.length() > 0 ? strengthsBuilder.toString() : "候选人完成了面试");
+        report.setWeaknesses(weaknessesBuilder.length() > 0 ? weaknessesBuilder.toString() : "部分问题可以回答得更深入");
+        report.setSuggestions(suggestionsBuilder.length() > 0 ? suggestionsBuilder.toString() : "建议继续学习和实践");
+        report.setRecommendedResources("推荐学习相关技术文档和开源项目");
+        report.setSpeechRate("NORMAL");
+        report.setClarity("GOOD");
+        report.setConfidence("NORMAL");
+
+        return reportRepository.save(report);
+    }
+
+    /**
+     * 创建默认评估报告
+     */
+    private EvaluationReport createDefaultReport(InterviewSession session) {
+        EvaluationReport report = new EvaluationReport();
+        report.setSessionId(session.getId());
+        report.setUserId(session.getUserId());
+        report.setPositionId(session.getPositionId());
+        report.setTechnicalScore(10);
+        report.setCommunicationScore(10);
+        report.setLogicScore(10);
+        report.setAdaptabilityScore(10);
+        report.setMatchingScore(10);
+        report.setOverallScore(10);
+        report.setStrengths("无");
+        report.setWeaknesses("未回答任何问题");
+        report.setSuggestions("建议勇敢尝试回答问题");
+        report.setRecommendedResources("推荐从基础开始学习");
+        report.setSpeechRate("NORMAL");
+        report.setClarity("GOOD");
+        report.setConfidence("NORMAL");
+        return reportRepository.save(report);
+    }
+
+    /**
+     * 生成评估报告（使用 AI）
      */
     @Transactional
     public EvaluationReport generateEvaluationReport(InterviewSession session) {

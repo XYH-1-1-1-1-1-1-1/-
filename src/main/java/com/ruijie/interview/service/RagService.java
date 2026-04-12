@@ -582,4 +582,40 @@ public class RagService {
 
         return llmService.simpleChat(enhancedPrompt, systemPrompt);
     }
+
+    /**
+     * 使用 RAG 评估单道题目回答
+     * 
+     * @param positionId 岗位 ID
+     * @param category 问题类别
+     * @param question 问题
+     * @param answer 回答
+     * @return 评估结果 JSON 字符串
+     */
+    public String evaluateAnswerWithRag(String positionId, String category, String question, String answer) {
+        // 检索相关知识
+        String ragContext = buildRagContext(positionId, question);
+        
+        // 使用 LLM 进行评估
+        return llmService.evaluateSingleAnswer(question, answer, 
+            getPositionName(positionId), category, ragContext);
+    }
+
+    /**
+     * 获取岗位名称
+     */
+    private String getPositionName(String positionId) {
+        Map<String, List<KnowledgeItem>> positionKnowledge = knowledgeBase.get(positionId);
+        if (positionKnowledge == null) {
+            return "技术岗位";
+        }
+        // 从知识库中获取岗位名称（这里简化处理）
+        return switch (positionId) {
+            case "backend" -> "后端开发工程师";
+            case "frontend" -> "前端开发工程师";
+            case "qa" -> "测试工程师";
+            case "algorithm" -> "算法工程师";
+            default -> "技术岗位";
+        };
+    }
 }

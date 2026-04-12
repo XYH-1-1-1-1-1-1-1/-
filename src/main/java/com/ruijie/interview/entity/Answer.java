@@ -50,6 +50,28 @@ public class Answer {
     @Column
     private String speechFeatures;
 
+    // 评分相关字段
+    @Column
+    private Integer technicalScore;
+
+    @Column
+    private Integer communicationScore;
+
+    @Column
+    private Integer logicScore;
+
+    @Column
+    private Integer knowledgeDepth;
+
+    @Column
+    private Integer overallScore;
+
+    @Column(columnDefinition = "TEXT")
+    private String evaluationComment;
+
+    @Column
+    private Boolean isSkipped;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -130,6 +152,63 @@ public class Answer {
 
     public void setSpeechFeatures(String speechFeatures) {
         this.speechFeatures = speechFeatures;
+    }
+
+    // 评分相关 Getter 和 Setter
+    public Integer getTechnicalScore() {
+        return technicalScore;
+    }
+
+    public void setTechnicalScore(Integer technicalScore) {
+        this.technicalScore = technicalScore;
+    }
+
+    public Integer getCommunicationScore() {
+        return communicationScore;
+    }
+
+    public void setCommunicationScore(Integer communicationScore) {
+        this.communicationScore = communicationScore;
+    }
+
+    public Integer getLogicScore() {
+        return logicScore;
+    }
+
+    public void setLogicScore(Integer logicScore) {
+        this.logicScore = logicScore;
+    }
+
+    public Integer getKnowledgeDepth() {
+        return knowledgeDepth;
+    }
+
+    public void setKnowledgeDepth(Integer knowledgeDepth) {
+        this.knowledgeDepth = knowledgeDepth;
+    }
+
+    public Integer getOverallScore() {
+        return overallScore;
+    }
+
+    public void setOverallScore(Integer overallScore) {
+        this.overallScore = overallScore;
+    }
+
+    public String getEvaluationComment() {
+        return evaluationComment;
+    }
+
+    public void setEvaluationComment(String evaluationComment) {
+        this.evaluationComment = evaluationComment;
+    }
+
+    public Boolean getIsSkipped() {
+        return isSkipped;
+    }
+
+    public void setIsSkipped(Boolean isSkipped) {
+        this.isSkipped = isSkipped;
     }
 
     public LocalDateTime getCreatedAt() {

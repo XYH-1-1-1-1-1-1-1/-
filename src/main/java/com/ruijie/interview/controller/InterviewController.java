@@ -107,6 +107,26 @@ public class InterviewController {
     }
 
     /**
+     * 跳过问题
+     */
+    @PostMapping("/{sessionId}/skip")
+    public UserController.ApiResponse<?> skipQuestion(
+            @PathVariable Long sessionId,
+            @RequestBody Map<String, String> request) {
+        try {
+            Long userId = Long.valueOf(request.get("userId").toString());
+            
+            InterviewService.InterviewResponse response = 
+                interviewService.skipQuestion(sessionId, userId);
+            
+            return UserController.ApiResponse.success(response);
+        } catch (Exception e) {
+            log.error("跳过问题失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
      * 获取评估报告
      */
     @GetMapping("/{sessionId}/report")
