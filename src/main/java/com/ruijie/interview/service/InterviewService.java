@@ -233,6 +233,9 @@ public class InterviewService {
                 InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
                 if (session != null && question != null) {
                     String category = question.getCategory() != null ? question.getCategory() : "技术知识";
+                    log.info("[RAG 评分] 开始评分 - 会话 ID: {}, 岗位：{}, 类别：{}, 问题：{}", 
+                        sessionId, session.getPositionId(), category, question.getContent());
+                    
                     String evalJson = ragService.evaluateAnswerWithRag(
                         session.getPositionId(), 
                         category, 
@@ -240,24 +243,43 @@ public class InterviewService {
                         answer
                     );
                     
+                    log.info("[RAG 评分] LLM 返回结果：{}", evalJson);
+                    
                     // 解析评分
                     JSONObject evalData = parseScoreJson(evalJson);
-                    userAnswer.setTechnicalScore(ensureMinScore(evalData.getInteger("technicalScore")));
-                    userAnswer.setCommunicationScore(ensureMinScore(evalData.getInteger("communicationScore")));
-                    userAnswer.setLogicScore(ensureMinScore(evalData.getInteger("logicScore")));
-                    userAnswer.setKnowledgeDepth(ensureMinScore(evalData.getInteger("knowledgeDepth")));
-                    userAnswer.setOverallScore(ensureMinScore(evalData.getInteger("overallScore")));
+                    log.info("[RAG 评分] 解析后的分数 - technicalScore: {}, communicationScore: {}, logicScore: {}, knowledgeDepth: {}, overallScore: {}",
+                        evalData.getInteger("technicalScore"),
+                        evalData.getInteger("communicationScore"),
+                        evalData.getInteger("logicScore"),
+                        evalData.getInteger("knowledgeDepth"),
+                        evalData.getInteger("overallScore"));
+                    
+                    Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
+                    Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
+                    Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
+                    Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
+                    Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
+                    
+                    log.info("[RAG 评分] 最终分数 - technicalScore: {}, communicationScore: {}, logicScore: {}, knowledgeDepth: {}, overallScore: {}",
+                        technicalScore, communicationScore, logicScore, knowledgeDepthScore, overallScore);
+                    
+                    userAnswer.setTechnicalScore(technicalScore);
+                    userAnswer.setCommunicationScore(communicationScore);
+                    userAnswer.setLogicScore(logicScore);
+                    userAnswer.setKnowledgeDepth(knowledgeDepthScore);
+                    userAnswer.setOverallScore(overallScore);
                     userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
                 }
             } catch (Exception e) {
                 log.error("RAG 评分失败，使用默认分数", e);
-                // 评分失败给最低分
-                userAnswer.setTechnicalScore(10);
-                userAnswer.setCommunicationScore(10);
-                userAnswer.setLogicScore(10);
-                userAnswer.setKnowledgeDepth(10);
-                userAnswer.setOverallScore(10);
-                userAnswer.setEvaluationComment("评分失败，使用默认分数");
+                // 评分失败给中等分数 50 分，而不是最低分
+                // 这样可以让用户看到真实的评分差异
+                userAnswer.setTechnicalScore(50);
+                userAnswer.setCommunicationScore(50);
+                userAnswer.setLogicScore(50);
+                userAnswer.setKnowledgeDepth(50);
+                userAnswer.setOverallScore(50);
+                userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。建议检查网络连接或 API 配置。");
             }
         }
 

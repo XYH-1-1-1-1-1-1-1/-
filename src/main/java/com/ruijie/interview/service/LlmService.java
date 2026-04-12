@@ -250,13 +250,19 @@ public class LlmService {
                                        String category, String knowledgeContext) {
         String systemPrompt = String.format(
             "你是一位专业的%s面试官，正在评估候选人对%s类别问题的回答。" +
-            "请根据提供的知识库信息和候选人的回答，从以下维度进行评分（10-100 分，最低 10 分）：" +
+            "请根据提供的知识库信息和候选人的回答，从以下维度进行评分（0-100 分）：" +
+            "- 90-100 分：回答非常出色，全面准确，有深入见解" +
+            "- 70-89 分：回答良好，基本正确，有一定深度" +
+            "- 50-69 分：回答一般，部分正确但不够完整" +
+            "- 30-49 分：回答较差，有明显错误或遗漏" +
+            "- 0-29 分：回答很差，几乎完全错误或未作答" +
+            "评分维度：" +
             "1. 技术正确性 (technicalScore) - 回答是否符合技术事实" +
             "2. 知识深度 (knowledgeDepth) - 回答的深度和广度" +
             "3. 逻辑思维 (logicScore) - 回答是否逻辑清晰" +
             "4. 表达清晰 (communicationScore) - 表达是否清晰易懂" +
             "5. 综合评分 (overallScore) - 综合以上维度的平均分" +
-            "同时返回简短评价 (evaluationComment)。" +
+            "同时返回简短评价 (evaluationComment)，指出亮点和不足。" +
             "请以 JSON 格式返回评估结果，只返回 JSON 不要有其他说明。",
             position, category
         );
@@ -267,10 +273,19 @@ public class LlmService {
         
         if (knowledgeContext != null && !knowledgeContext.isEmpty()) {
             prompt.append("【参考知识库】\n").append(knowledgeContext).append("\n\n");
+        } else {
+            log.debug("RAG 知识库上下文为空，将基于通用知识进行评分");
         }
         
         prompt.append("请根据以上信息进行评估，返回 JSON 格式的评分结果：");
 
-        return simpleChat(prompt.toString(), systemPrompt);
+        log.info("开始 RAG 评分 - 岗位：{}, 类别：{}, 问题：{}", position, category, question);
+        log.debug("候选人回答：{}", answer);
+        
+        String result = simpleChat(prompt.toString(), systemPrompt);
+        
+        log.info("RAG 评分完成 - 结果：{}", result);
+        
+        return result;
     }
 }
