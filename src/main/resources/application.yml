@@ -56,7 +56,7 @@ app:
     # API 提供商：openrouter / huggingface / ollama
     provider: openrouter
     # API Key (用户自行申请)
-    api-key: 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
+    api-key: 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
     # API 基础 URL
     base-url: https://openrouter.ai/api/v1
     # 默认模型 (OpenRouter 提供免费额度的模型)

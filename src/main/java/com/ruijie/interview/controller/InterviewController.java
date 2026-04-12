@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 面试控制器
@@ -176,6 +177,40 @@ public class InterviewController {
             return UserController.ApiResponse.success(result);
         } catch (Exception e) {
             log.error("删除会话失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 检查并恢复进行中的面试
+     */
+    @GetMapping("/resume/{userId}")
+    public UserController.ApiResponse<Map<String, Object>> resumeInterview(@PathVariable Long userId) {
+        try {
+            // 查找进行中的面试
+            java.util.Optional<InterviewSession> inProgressSession = interviewService.getInProgressSession(userId);
+            
+            if (inProgressSession.isPresent()) {
+                InterviewSession session = inProgressSession.get();
+                int questionIndex = interviewService.getCurrentQuestionIndex(session.getId());
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("hasInProgress", true);
+                result.put("sessionId", session.getId());
+                result.put("positionId", session.getPositionId());
+                result.put("questionIndex", questionIndex);
+                result.put("totalQuestions", session.getTotalQuestions());
+                result.put("status", session.getStatus());
+                
+                return UserController.ApiResponse.success(result);
+            } else {
+                Map<String, Object> result = new HashMap<>();
+                result.put("hasInProgress", false);
+                
+                return UserController.ApiResponse.success(result);
+            }
+        } catch (Exception e) {
+            log.error("检查进行中的面试失败", e);
             return UserController.ApiResponse.error(e.getMessage());
         }
     }

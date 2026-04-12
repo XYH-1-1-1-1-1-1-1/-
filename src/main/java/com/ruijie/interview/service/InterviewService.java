@@ -78,6 +78,49 @@ public class InterviewService {
     }
 
     /**
+     * 获取用户进行中的面试会话
+     */
+    public Optional<InterviewSession> getInProgressSession(Long userId) {
+        List<InterviewSession> sessions = sessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        for (InterviewSession session : sessions) {
+            if ("IN_PROGRESS".equals(session.getStatus())) {
+                return Optional.of(session);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * 恢复进行中的面试会话
+     */
+    @Transactional
+    public InterviewSession resumeInterview(Long userId, Long sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new RuntimeException("会话不存在：" + sessionId));
+        
+        if (!session.getUserId().equals(userId)) {
+            throw new RuntimeException("无权访问该会话");
+        }
+        
+        if (!"IN_PROGRESS".equals(session.getStatus())) {
+            throw new RuntimeException("该会话已结束，无法恢复");
+        }
+        
+        return session;
+    }
+
+    /**
+     * 获取当前问题的索引（用于恢复面试时加载正确的问题）
+     */
+    public int getCurrentQuestionIndex(Long sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+        if (session == null) {
+            return 0;
+        }
+        return session.getAnsweredQuestions();
+    }
+
+    /**
      * 提交回答并获取下一个问题
      */
     @Transactional
