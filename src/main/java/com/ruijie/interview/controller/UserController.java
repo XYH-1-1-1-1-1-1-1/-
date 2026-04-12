@@ -1,12 +1,22 @@
 package com.ruijie.interview.controller;
 
+import com.ruijie.interview.entity.Resume;
 import com.ruijie.interview.entity.User;
+import com.ruijie.interview.service.ResumeService;
 import com.ruijie.interview.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,6 +32,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private ResumeService resumeService;
 
     /**
      * 用户登录
@@ -88,6 +101,81 @@ public class UserController {
                 .orElse(ApiResponse.error("用户不存在"));
         } catch (Exception e) {
             log.error("获取用户失败", e);
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 上传简历
+     */
+    @PostMapping("/{id}/resume")
+    public ApiResponse<Resume> uploadResume(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            User existingUser = userService.findById(id)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            if (file.isEmpty()) {
+                return ApiResponse.error("请选择要上传的文件");
+            }
+            
+            Resume resume = resumeService.uploadResume(id, file);
+            return ApiResponse.success(resume);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(400, e.getMessage());
+        } catch (Exception e) {
+            log.error("上传简历失败", e);
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取用户的简历信息
+     */
+    @GetMapping("/{id}/resume")
+    public ApiResponse<Resume> getUserResume(@PathVariable Long id) {
+        try {
+            return resumeService.getUserResume(id)
+                .map(ApiResponse::success)
+                .orElse(ApiResponse.error(404, "未找到简历"));
+        } catch (Exception e) {
+            log.error("获取简历失败", e);
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 查看/下载简历文件
+     */
+    @GetMapping("/{id}/resume/view")
+    public ResponseEntity<byte[]> viewResume(@PathVariable Long id) {
+        try {
+            Resume resume = resumeService.getUserResume(id)
+                .orElseThrow(() -> new RuntimeException("未找到简历"));
+            
+            Path filePath = Path.of(resume.getFilePath());
+            byte[] content = Files.readAllBytes(filePath);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline", resume.getFileName());
+            
+            return new ResponseEntity<>(content, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("查看简历失败", e);
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
+     * 删除简历
+     */
+    @DeleteMapping("/{id}/resume")
+    public ApiResponse<Void> deleteResume(@PathVariable Long id) {
+        try {
+            resumeService.deleteResume(id);
+            return ApiResponse.success(null);
+        } catch (Exception e) {
+            log.error("删除简历失败", e);
             return ApiResponse.error(e.getMessage());
         }
     }

@@ -265,13 +265,15 @@ public class InterviewService {
     }
 
     /**
-     * 确保分数不低于最低分 10 分
+     * 确保分数在有效范围内 (0-100)
+     * 注意：不再强制设置最低分，让评分真实反映回答质量
      */
     private Integer ensureMinScore(Integer score) {
-        if (score == null || score < 10) {
-            return 10;
+        if (score == null) {
+            return 50; // 默认中等分数，而不是最低分
         }
-        return Math.min(score, 100);
+        // 限制在 0-100 范围内
+        return Math.max(0, Math.min(score, 100));
     }
 
     /**
@@ -612,6 +614,25 @@ public class InterviewService {
      */
     public List<EvaluationReport> getUserReports(Long userId) {
         return reportRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /**
+     * 删除面试会话记录
+     */
+    @Transactional
+    public void deleteInterviewSession(Long sessionId) {
+        // 先删除相关的回答记录
+        List<Answer> answers = answerRepository.findBySessionIdOrderByQuestionId(sessionId);
+        if (!answers.isEmpty()) {
+            answerRepository.deleteAll(answers);
+        }
+        
+        // 删除相关的评估报告
+        Optional<EvaluationReport> report = reportRepository.findBySessionId(sessionId);
+        report.ifPresent(reportRepository::delete);
+        
+        // 最后删除面试会话
+        sessionRepository.deleteById(sessionId);
     }
 
     /**

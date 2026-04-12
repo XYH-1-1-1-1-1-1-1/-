@@ -154,4 +154,29 @@ public class InterviewController {
             return UserController.ApiResponse.error(e.getMessage());
         }
     }
+
+    /**
+     * 删除面试会话记录
+     */
+    @DeleteMapping("/{sessionId}")
+    public UserController.ApiResponse<Map<String, Object>> deleteSession(@PathVariable Long sessionId) {
+        try {
+            // 先检查会话是否存在
+            if (!interviewService.getSession(sessionId).isPresent()) {
+                return UserController.ApiResponse.error("会话不存在：" + sessionId);
+            }
+            
+            // 删除会话及相关数据
+            interviewService.deleteInterviewSession(sessionId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("sessionId", sessionId);
+            result.put("message", "删除成功");
+            
+            return UserController.ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("删除会话失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
 }

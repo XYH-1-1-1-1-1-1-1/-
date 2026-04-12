@@ -380,6 +380,28 @@
             color: #00d4ff;
         }
         
+        .history-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .btn-delete {
+            padding: 8px 16px;
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .btn-delete:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+        
         /* 提示信息 */
         .toast {
             position: fixed;
@@ -574,6 +596,31 @@
                     <button class="btn" onclick="saveProfile()">保存修改</button>
                     <button class="btn btn-secondary" onclick="logout()" style="margin-top: 10px;">退出登录</button>
                 </div>
+                
+                <h2 style="margin-top: 30px;">我的简历</h2>
+                <div class="interview-container">
+                    <div id="resumeUploadSection">
+                        <div class="form-group">
+                            <label>上传简历 (PDF 格式，最大 10MB)</label>
+                            <input type="file" id="resumeFile" accept=".pdf,application/pdf" style="margin-top: 10px;">
+                        </div>
+                        <button class="btn" onclick="uploadResume()" id="uploadResumeBtn">上传简历</button>
+                    </div>
+                    
+                    <div id="resumeInfoSection" class="hidden" style="margin-top: 20px;">
+                        <div style="background: rgba(0,212,255,0.1); border-left: 4px solid #00d4ff; padding: 20px; border-radius: 0 10px 10px 0;">
+                            <h4 style="color: #00d4ff; margin-bottom: 10px;">📄 已上传简历</h4>
+                            <p style="color: #aaa; margin: 5px 0;">文件名：<span id="resumeFileName" style="color: #fff;"></span></p>
+                            <p style="color: #aaa; margin: 5px 0;">文件大小：<span id="resumeFileSize" style="color: #fff;"></span></p>
+                            <p style="color: #aaa; margin: 5px 0;">上传时间：<span id="resumeUploadTime" style="color: #fff;"></span></p>
+                            <div style="margin-top: 15px;">
+                                <button class="btn" onclick="viewResume()" style="width: auto; padding: 10px 20px; margin-right: 10px;">📖 查看简历</button>
+                                <button class="btn btn-secondary" onclick="showUploadSection()" style="width: auto; padding: 10px 20px;">🔄 重新上传</button>
+                                <button class="btn btn-secondary" onclick="deleteResume()" style="width: auto; padding: 10px 20px; background: linear-gradient(90deg, #ff416c, #ff4b2b);">🗑️ 删除简历</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -708,6 +755,8 @@
             
             if (tabName === 'history') {
                 loadHistory();
+            } else if (tabName === 'profile') {
+                loadResumeInfo();
             }
         }
         
@@ -1037,14 +1086,18 @@
                         const answered = session.answeredQuestions || 0;
                         const total = session.totalQuestions || 10;
                         const skipped = session.skippedQuestions || 0;
+                        const scoreText = session.status === 'COMPLETED' ? '加载中...' : '进行中';
                         
                         return `
-                            <div class="history-item" onclick="viewSessionReport(${session.id})">
-                                <div class="history-info">
+                            <div class="history-item">
+                                <div class="history-info" onclick="viewSessionReport(${session.id})" style="cursor: pointer; flex: 1;">
                                     <h4>${getPositionName(session.positionId)} - ${status}</h4>
                                     <p>时间：${date} | 进度：${answered}/${total} | 跳过：${skipped}</p>
                                 </div>
-                                <div class="history-score" id="score_${session.id}">加载中...</div>
+                                <div class="history-actions">
+                                    <div class="history-score" id="score_${session.id}">${scoreText}</div>
+                                    ${session.status !== 'IN_PROGRESS' ? `<button class="btn-delete" onclick="deleteInterviewSession(${session.id}, event)">🗑️ 删除</button>` : ''}
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -1053,8 +1106,6 @@
                     sessions.forEach(session => {
                         if (session.status === 'COMPLETED') {
                             loadSessionScore(session.id);
-                        } else {
-                            document.getElementById(`score_${session.id}`).textContent = '进行中';
                         }
                     });
                 } else {
@@ -1063,6 +1114,35 @@
             } catch (e) {
                 console.error('加载历史失败', e);
                 historyList.innerHTML = '<p style="color: #888; text-align: center;">加载失败，请重试</p>';
+            }
+        }
+        
+        // 删除面试会话记录
+        async function deleteInterviewSession(sessionId, event) {
+            // 阻止事件冒泡，防止触发查看报告
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            if (!confirm('确定要删除这条面试记录吗？删除后将无法恢复。')) {
+                return;
+            }
+            
+            try {
+                const resp = await fetch(API_BASE + `/interview/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    showToast('面试记录已删除', 'success');
+                    // 重新加载历史记录
+                    await loadHistory();
+                } else {
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('删除失败：' + e.message, 'error');
             }
         }
         
@@ -1221,6 +1301,140 @@
             setTimeout(() => {
                 toast.remove();
             }, 3000);
+        }
+        
+        // ==================== 简历相关功能 ====================
+        
+        // 上传简历
+        async function uploadResume() {
+            const fileInput = document.getElementById('resumeFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showToast('请选择要上传的简历文件', 'error');
+                return;
+            }
+            
+            if (file.type !== 'application/pdf') {
+                showToast('只支持 PDF 格式的简历文件', 'error');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('简历文件大小不能超过 10MB', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const uploadBtn = document.getElementById('uploadResumeBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '上传中...';
+            
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    showToast('简历上传成功', 'success');
+                    fileInput.value = '';
+                    await loadResumeInfo();
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (e) {
+                showToast('上传失败：' + e.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '上传简历';
+            }
+        }
+        
+        // 加载简历信息
+        async function loadResumeInfo() {
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`);
+                const data = await resp.json();
+                
+                if (data.code === 200 && data.data) {
+                    const resume = data.data;
+                    
+                    // 显示简历信息
+                    document.getElementById('resumeFileName').textContent = resume.fileName;
+                    document.getElementById('resumeFileSize').textContent = formatFileSize(resume.fileSize);
+                    document.getElementById('resumeUploadTime').textContent = formatDateTime(resume.uploadedAt);
+                    
+                    document.getElementById('resumeUploadSection').classList.add('hidden');
+                    document.getElementById('resumeInfoSection').classList.remove('hidden');
+                } else {
+                    // 没有简历
+                    document.getElementById('resumeUploadSection').classList.remove('hidden');
+                    document.getElementById('resumeInfoSection').classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('加载简历信息失败', e);
+                document.getElementById('resumeUploadSection').classList.remove('hidden');
+                document.getElementById('resumeInfoSection').classList.add('hidden');
+            }
+        }
+        
+        // 显示上传区域（重新上传）
+        function showUploadSection() {
+            document.getElementById('resumeUploadSection').classList.remove('hidden');
+            document.getElementById('resumeInfoSection').classList.add('hidden');
+        }
+        
+        // 查看简历（在新窗口打开 PDF）
+        function viewResume() {
+            window.open(API_BASE + `/user/${currentUser.id}/resume/view`, '_blank');
+        }
+        
+        // 删除简历
+        async function deleteResume() {
+            if (!confirm('确定要删除已上传的简历吗？')) {
+                return;
+            }
+            
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
+                    method: 'DELETE'
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    showToast('简历已删除', 'success');
+                    document.getElementById('resumeUploadSection').classList.remove('hidden');
+                    document.getElementById('resumeInfoSection').classList.add('hidden');
+                    document.getElementById('resumeFile').value = '';
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (e) {
+                showToast('删除失败：' + e.message, 'error');
+            }
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return '未知时间';
+            try {
+                // 处理 LocalDateTime 格式 (YYYY-MM-DDTHH:MM:SS)
+                const date = new Date(dateTimeStr.replace(' ', 'T'));
+                return date.toLocaleString('zh-CN');
+            } catch (e) {
+                return dateTimeStr;
+            }
         }
     </script>
 </body>

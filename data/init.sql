@@ -126,7 +126,22 @@ CREATE TABLE IF NOT EXISTS evaluation_reports (
 );
 
 -- ============================================
--- 7. 学习资源表 (learning_resources)
+-- 7. 简历表 (resumes)
+-- ============================================
+CREATE TABLE IF NOT EXISTS resumes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INTEGER NOT NULL,
+    file_content BLOB,
+    content_type VARCHAR(100),
+    uploaded_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+-- ============================================
+-- 8. 学习资源表 (learning_resources)
 -- ============================================
 CREATE TABLE IF NOT EXISTS learning_resources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,6 +173,7 @@ CREATE INDEX IF NOT EXISTS idx_interview_sessions_user_id ON interview_sessions(
 CREATE INDEX IF NOT EXISTS idx_interview_sessions_status ON interview_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_evaluation_reports_session_id ON evaluation_reports(session_id);
 CREATE INDEX IF NOT EXISTS idx_evaluation_reports_user_id ON evaluation_reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX IF NOT EXISTS idx_learning_resources_position_id ON learning_resources(position_id);
 
 -- ============================================
