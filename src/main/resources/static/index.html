@@ -533,6 +533,7 @@
                         <button class="btn voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤 语音输入</button>
                         <button class="btn btn-secondary" onclick="skipQuestion()">跳过</button>
                         <button class="btn" onclick="submitAnswer()">提交回答</button>
+                        <button class="btn btn-secondary" onclick="exitInterview()" style="background: linear-gradient(90deg, #ff416c, #ff4b2b); margin-left: auto;">🚪 退出面试</button>
                     </div>
                 </div>
                 
@@ -757,14 +758,41 @@
                 if (data.code === 200 && data.data && data.data.hasInProgress) {
                     const session = data.data;
                     
-                    // 显示恢复提示
-                    if (confirm(`您有一个进行中的面试（${getPositionName(session.positionId)}），进度：${session.questionIndex}/${session.totalQuestions}。\n是否继续之前的面试？`)) {
+                    // 显示恢复提示（使用原生 confirm 对话框）
+                    const shouldResume = confirm(
+                        `您有一个进行中的面试（${getPositionName(session.positionId)}），进度：${session.questionIndex}/${session.totalQuestions}。\n点击"确定"继续面试，点击"取消"放弃面试。`
+                    );
+                    
+                    if (shouldResume) {
                         // 恢复面试
                         await resumeExistingInterview(session.sessionId, session.positionId, session.questionIndex);
+                    } else {
+                        // 拒绝恢复，退出面试并删除记录
+                        await rejectResume(session.sessionId);
                     }
                 }
             } catch (e) {
                 console.error('检查进行中的面试失败', e);
+            }
+        }
+
+        // 拒绝恢复面试（删除记录）
+        async function rejectResume(sessionId) {
+            try {
+                const resp = await fetch(API_BASE + `/interview/${sessionId}/exit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id
+                    })
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    showToast('已放弃恢复面试', 'success');
+                }
+            } catch (e) {
+                console.error('放弃面试失败', e);
             }
         }
 
@@ -1052,6 +1080,56 @@
                     loadQuestion();
                     document.getElementById('answerInput').value = '';
                 }
+            }
+        }
+
+        // 退出面试（不保存任何记录）
+        async function exitInterview() {
+            if (!confirm('确定要退出面试吗？退出后将不会保存任何面试记录。')) {
+                return;
+            }
+            
+            if (!currentSession || !currentSession.id) {
+                // 如果没有会话，直接返回岗位选择
+                currentSession = null;
+                document.getElementById('interviewing').classList.add('hidden');
+                document.getElementById('interviewStart').classList.remove('hidden');
+                showToast('已退出面试', 'success');
+                return;
+            }
+            
+            const sessionId = currentSession.id;
+            try {
+                const resp = await fetch(API_BASE + `/interview/${sessionId}/exit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id
+                    })
+                });
+                const data = await resp.json();
+                
+                if (data.code === 200) {
+                    // 清除本地状态
+                    currentSession = null;
+                    currentQuestionIndex = 0;
+                    
+                    // 返回岗位选择
+                    document.getElementById('interviewing').classList.add('hidden');
+                    document.getElementById('interviewStart').classList.remove('hidden');
+                    document.getElementById('interviewResult').classList.add('hidden');
+                    showToast('已退出面试，未保存记录', 'success');
+                } else {
+                    showToast('退出失败：' + (data.message || '未知错误'), 'error');
+                }
+            } catch (e) {
+                // 即使 API 调用失败，也清除本地状态（确保用户体验一致）
+                currentSession = null;
+                currentQuestionIndex = 0;
+                document.getElementById('interviewing').classList.add('hidden');
+                document.getElementById('interviewStart').classList.remove('hidden');
+                document.getElementById('interviewResult').classList.add('hidden');
+                showToast('已退出面试（服务器连接失败）', 'success');
             }
         }
         

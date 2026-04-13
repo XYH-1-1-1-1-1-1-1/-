@@ -63,6 +63,10 @@ public class InterviewSession {
     @Column
     private LocalDateTime endTime;
 
+    // 标记是否为用户主动退出（退出时不保存记录）
+    @Column
+    private Boolean isAbandoned;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -183,5 +187,13 @@ public class InterviewSession {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getIsAbandoned() {
+        return isAbandoned;
+    }
+
+    public void setIsAbandoned(Boolean isAbandoned) {
+        this.isAbandoned = isAbandoned;
     }
 }

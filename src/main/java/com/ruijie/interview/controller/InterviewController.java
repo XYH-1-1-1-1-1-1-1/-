@@ -214,4 +214,31 @@ public class InterviewController {
             return UserController.ApiResponse.error(e.getMessage());
         }
     }
+
+    /**
+     * 退出面试（不保存任何历史记录）
+     * 用于用户在面试过程中主动退出，或拒绝恢复面试
+     */
+    @PostMapping("/{sessionId}/exit")
+    public UserController.ApiResponse<Map<String, Object>> exitInterview(
+            @PathVariable Long sessionId,
+            @RequestBody Map<String, String> request) {
+        try {
+            // 检查会话是否存在
+            if (!interviewService.getSession(sessionId).isPresent()) {
+                return UserController.ApiResponse.error("会话不存在：" + sessionId);
+            }
+            
+            // 退出面试，删除所有相关数据
+            interviewService.exitInterview(sessionId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("message", "已退出面试");
+            
+            return UserController.ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("退出面试失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
 }

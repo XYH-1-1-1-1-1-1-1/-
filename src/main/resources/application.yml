@@ -49,23 +49,23 @@ spring:
 
 # 应用配置
 app:
-  # 大模型 API 配置 - 使用免费开源 API
-  # 推荐使用：OpenRouter (聚合多个免费模型) 或 HuggingFace Inference API
-  # 注册地址：https://openrouter.ai/ 获取免费 API Key
+  # 大模型 API 配置 - 使用阿里云 DashScope（通义千问）
+  # 注册地址：https://dashscope.console.aliyun.com/ 获取 API Key
+  # 每日免费额度：qwen-turbo 每日 200 万 tokens 免费
   llm:
-    # API 提供商：openrouter / huggingface / ollama
-    provider: openrouter
-    # API Key (用户自行申请)
-    api-key: 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
-    # API 基础 URL
-    base-url: https://openrouter.ai/api/v1
-    # 默认模型 (OpenRouter 提供免费额度的模型)
-    model: google/gemma-2-9b-it:free
+    # API 提供商：dashscope / openrouter / huggingface / ollama
+    provider: dashscope
+    # API Key
+    api-key: sk-02e488d845ad4d38a4cf89ee8c5e52ec
+    # API 基础 URL（DashScope 兼容 OpenAI 格式）
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    # 默认模型（通义千问 turbo 模型，免费额度充足）
+    model: qwen-turbo
     # 备选模型列表
     fallback-models:
-      - meta-llama/llama-3-8b-instruct:free
-      - mistralai/mistral-7b-instruct:free
-      - google/gemma-2-9b-it:free
+      - qwen-plus
+      - qwen-max
+      - qwen-long
   
   # 语音识别 API 配置
   speech:

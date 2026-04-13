@@ -701,6 +701,18 @@ public class InterviewService {
     }
 
     /**
+     * 主动退出面试（不保存任何记录）
+     * 用于用户在面试过程中主动退出或拒绝恢复面试
+     */
+    @Transactional
+    public void exitInterview(Long sessionId) {
+        log.info("[退出面试] 开始退出面试会话，会话ID: {}", sessionId);
+        // 直接删除会话及相关数据，不保存任何历史记录
+        deleteInterviewSession(sessionId);
+        log.info("[退出面试] 面试会话已删除，会话ID: {}", sessionId);
+    }
+
+    /**
      * 面试响应 DTO
      */
     public static class InterviewResponse {
