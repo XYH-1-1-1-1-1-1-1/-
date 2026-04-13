@@ -35,6 +35,7 @@ public class InterviewController {
         try {
             Long userId = Long.valueOf(request.get("userId").toString());
             String positionCode = (String) request.get("positionCode");
+            String interviewMode = (String) request.getOrDefault("interviewMode", "PRACTICE");
             
             if (userId == null || userId <= 0) {
                 return UserController.ApiResponse.error("用户 ID 无效");
@@ -43,7 +44,7 @@ public class InterviewController {
                 return UserController.ApiResponse.error("岗位编码不能为空");
             }
             
-            InterviewSession session = interviewService.startInterview(userId, positionCode);
+            InterviewSession session = interviewService.startInterview(userId, positionCode, interviewMode);
             
             return UserController.ApiResponse.success(session);
         } catch (Exception e) {
@@ -201,6 +202,7 @@ public class InterviewController {
                 result.put("questionIndex", questionIndex);
                 result.put("totalQuestions", session.getTotalQuestions());
                 result.put("status", session.getStatus());
+                result.put("interviewMode", session.getInterviewMode()); // 返回面试模式
                 
                 return UserController.ApiResponse.success(result);
             } else {

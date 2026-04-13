@@ -44,10 +44,19 @@ public class InterviewService {
     private RagService ragService;
 
     /**
-     * 开始新的面试会话
+     * 开始新的面试会话（默认练习模式）
      */
     @Transactional
     public InterviewSession startInterview(Long userId, String positionCode) {
+        return startInterview(userId, positionCode, "PRACTICE");
+    }
+
+    /**
+     * 开始新的面试会话（支持指定模式）
+     * @param interviewMode 面试模式：REAL（真实面试-语音）/ PRACTICE（练习面试-文字）
+     */
+    @Transactional
+    public InterviewSession startInterview(Long userId, String positionCode, String interviewMode) {
         Position position = positionService.findByCode(positionCode)
             .orElseThrow(() -> new RuntimeException("岗位不存在：" + positionCode));
 
@@ -59,6 +68,7 @@ public class InterviewService {
         session.setAnsweredQuestions(0);
         session.setConversationHistory("");
         session.setStartTime(LocalDateTime.now());
+        session.setInterviewMode(interviewMode != null ? interviewMode : "PRACTICE");
 
         return sessionRepository.save(session);
     }

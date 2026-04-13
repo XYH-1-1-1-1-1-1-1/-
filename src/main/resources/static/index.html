@@ -55,7 +55,6 @@
             font-size: 2.5em;
         }
         
-        /* 登录页面 */
         .auth-container {
             max-width: 400px;
             margin: 50px auto;
@@ -128,7 +127,6 @@
             text-decoration: none;
         }
         
-        /* 主页面 */
         .main-content {
             display: none;
         }
@@ -163,7 +161,6 @@
             display: block;
         }
         
-        /* 岗位卡片 */
         .position-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -210,7 +207,6 @@
             color: #00d4ff;
         }
         
-        /* 面试界面 */
         .interview-container {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
@@ -225,6 +221,8 @@
             margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .question-box {
@@ -258,9 +256,15 @@
             border-color: #00d4ff;
         }
         
+        .answer-area.readonly {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         .interview-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         
         .btn-secondary {
@@ -282,7 +286,21 @@
             50% { opacity: 0.7; }
         }
         
-        /* 评估报告 */
+        .mode-badge {
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #fff;
+        }
+        
+        .mode-badge.practice {
+            background: rgba(0,212,255,0.3);
+        }
+        
+        .mode-badge.real {
+            background: rgba(123,44,191,0.3);
+        }
+        
         .report-container {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
@@ -343,7 +361,6 @@
             border-bottom: none;
         }
         
-        /* 历史记录 */
         .history-list {
             display: flex;
             flex-direction: column;
@@ -358,6 +375,8 @@
             background: rgba(255,255,255,0.05);
             border-radius: 10px;
             transition: background 0.3s;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .history-item:hover {
@@ -372,6 +391,24 @@
         .history-info p {
             color: #888;
             font-size: 0.9em;
+        }
+        
+        .history-mode {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+        
+        .history-mode.practice {
+            background: rgba(0,212,255,0.2);
+            color: #00d4ff;
+        }
+        
+        .history-mode.real {
+            background: rgba(123,44,191,0.2);
+            color: #b388ff;
         }
         
         .history-score {
@@ -402,7 +439,6 @@
             transform: scale(1.05);
         }
         
-        /* 提示信息 */
         .toast {
             position: fixed;
             top: 20px;
@@ -427,18 +463,71 @@
             to { transform: translateX(0); opacity: 1; }
         }
         
-        /* 隐藏元素 */
         .hidden {
             display: none !important;
         }
         
-        /* 页脚 */
         footer {
             text-align: center;
             padding: 30px;
             color: #666;
             margin-top: 50px;
             border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* 模式选择样式 */
+        .mode-option {
+            flex: 1;
+            min-width: 250px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mode-option:hover {
+            transform: translateY(-3px);
+        }
+        
+        .mode-option.selected.practice {
+            border-color: rgba(0,212,255,0.8);
+            background: rgba(0,212,255,0.1);
+        }
+        
+        .mode-option.selected.real {
+            border-color: rgba(123,44,191,0.8);
+            background: rgba(123,44,191,0.1);
+        }
+        
+        /* 真实面试语音区域 */
+        .voice-answer-area {
+            background: rgba(123,44,191,0.1);
+            border-left: 4px solid #7b2cbf;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 15px;
+        }
+        
+        .voice-answer-area p {
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .voice-answer-text {
+            color: #fff;
+            font-size: 1em;
+            min-height: 80px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        
+        .voice-warning {
+            color: #ff9800;
+            font-size: 0.9em;
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -501,9 +590,31 @@
             <!-- 岗位选择 -->
             <div id="positionsTab" class="tab-content active">
                 <h2>选择面试岗位</h2>
-                <div class="position-grid" id="positionGrid">
-                    <!-- 岗位卡片由 JS 动态生成 -->
+                
+                <!-- 面试模式选择 -->
+                <div style="margin: 20px 0; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 15px;">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px;">选择面试模式</h3>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div class="mode-option selected practice" onclick="selectMode('PRACTICE')">
+                            <input type="radio" name="interviewMode" value="PRACTICE" checked style="display: none;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2.5em; margin-bottom: 10px;">📝</div>
+                                <h4 style="color: #fff; margin-bottom: 10px;">练习模式</h4>
+                                <p style="color: #aaa; font-size: 0.9em;">文本回答，可以修改答案，适合学习和练习</p>
+                            </div>
+                        </div>
+                        <div class="mode-option real" onclick="selectMode('REAL')">
+                            <input type="radio" name="interviewMode" value="REAL" style="display: none;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 2.5em; margin-bottom: 10px;">🎤</div>
+                                <h4 style="color: #fff; margin-bottom: 10px;">真实面试</h4>
+                                <p style="color: #aaa; font-size: 0.9em;">语音输入，回答不可更改，模拟真实面试场景</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
+                <div class="position-grid" id="positionGrid"></div>
             </div>
             
             <!-- 面试界面 -->
@@ -520,6 +631,7 @@
                     <div class="interview-header">
                         <span id="interviewPosition">岗位：后端开发工程师</span>
                         <span id="interviewProgress">进度：1/10</span>
+                        <span id="interviewModeBadge" class="mode-badge practice">📝 练习模式</span>
                     </div>
                     
                     <div class="question-box">
@@ -527,37 +639,44 @@
                         <p id="questionContent">请解释一下 HashMap 的实现原理...</p>
                     </div>
                     
+                    <!-- 真实面试模式：语音录制区域 -->
+                    <div id="realModeAnswerArea" class="hidden">
+                        <div class="voice-answer-area">
+                            <p>🎤 语音回答</p>
+                            <div id="voiceAnswerText" class="voice-answer-text">请点击"开始录音"进行语音回答...</div>
+                        </div>
+                        <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
+                    </div>
+                    
+                    <!-- 练习模式：可编辑的文本输入框 -->
                     <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答..."></textarea>
                     
                     <div class="interview-actions">
-                        <button class="btn voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤 语音输入</button>
+                        <!-- 真实面试模式：语音按钮 -->
+                        <button class="btn voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
+                        <!-- 练习模式：语音辅助输入 -->
+                        <button class="btn voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
                         <button class="btn btn-secondary" onclick="skipQuestion()">跳过</button>
-                        <button class="btn" onclick="submitAnswer()">提交回答</button>
+                        <button class="btn" id="submitBtn" onclick="submitAnswer()">提交回答</button>
                         <button class="btn btn-secondary" onclick="exitInterview()" style="background: linear-gradient(90deg, #ff416c, #ff4b2b); margin-left: auto;">🚪 退出面试</button>
                     </div>
                 </div>
                 
                 <div id="interviewResult" class="report-container hidden">
                     <h2>面试评估报告</h2>
-                    <div class="score-grid" id="scoreGrid">
-                        <!-- 分数由 JS 动态生成 -->
-                    </div>
-                    
+                    <div class="score-grid" id="scoreGrid"></div>
                     <div class="report-section">
                         <h4>✨ 亮点分析</h4>
                         <ul id="strengthsList"></ul>
                     </div>
-                    
                     <div class="report-section">
                         <h4>⚠️ 待改进之处</h4>
                         <ul id="weaknessesList"></ul>
                     </div>
-                    
                     <div class="report-section">
                         <h4>💡 改进建议</h4>
                         <p id="suggestionsText"></p>
                     </div>
-                    
                     <button class="btn" onclick="switchTab('positions')" style="margin-top: 20px;">再次练习</button>
                 </div>
             </div>
@@ -565,9 +684,7 @@
             <!-- 历史记录 -->
             <div id="historyTab" class="tab-content">
                 <h2>面试历史</h2>
-                <div class="history-list" id="historyList">
-                    <!-- 历史记录由 JS 动态生成 -->
-                </div>
+                <div class="history-list" id="historyList"></div>
             </div>
             
             <!-- 个人中心 -->
@@ -597,31 +714,6 @@
                     <button class="btn" onclick="saveProfile()">保存修改</button>
                     <button class="btn btn-secondary" onclick="logout()" style="margin-top: 10px;">退出登录</button>
                 </div>
-                
-                <h2 style="margin-top: 30px;">我的简历</h2>
-                <div class="interview-container">
-                    <div id="resumeUploadSection">
-                        <div class="form-group">
-                            <label>上传简历 (PDF 格式，最大 10MB)</label>
-                            <input type="file" id="resumeFile" accept=".pdf,application/pdf" style="margin-top: 10px;">
-                        </div>
-                        <button class="btn" onclick="uploadResume()" id="uploadResumeBtn">上传简历</button>
-                    </div>
-                    
-                    <div id="resumeInfoSection" class="hidden" style="margin-top: 20px;">
-                        <div style="background: rgba(0,212,255,0.1); border-left: 4px solid #00d4ff; padding: 20px; border-radius: 0 10px 10px 0;">
-                            <h4 style="color: #00d4ff; margin-bottom: 10px;">📄 已上传简历</h4>
-                            <p style="color: #aaa; margin: 5px 0;">文件名：<span id="resumeFileName" style="color: #fff;"></span></p>
-                            <p style="color: #aaa; margin: 5px 0;">文件大小：<span id="resumeFileSize" style="color: #fff;"></span></p>
-                            <p style="color: #aaa; margin: 5px 0;">上传时间：<span id="resumeUploadTime" style="color: #fff;"></span></p>
-                            <div style="margin-top: 15px;">
-                                <button class="btn" onclick="viewResume()" style="width: auto; padding: 10px 20px; margin-right: 10px;">📖 查看简历</button>
-                                <button class="btn btn-secondary" onclick="showUploadSection()" style="width: auto; padding: 10px 20px;">🔄 重新上传</button>
-                                <button class="btn btn-secondary" onclick="deleteResume()" style="width: auto; padding: 10px 20px; background: linear-gradient(90deg, #ff416c, #ff4b2b);">🗑️ 删除简历</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
         
@@ -631,17 +723,16 @@
     </div>
     
     <script>
-        // API 基础地址
         const API_BASE = '/api';
-        
-        // 全局状态
         let currentUser = null;
         let currentSession = null;
         let currentQuestionIndex = 0;
         let positions = [];
         let isRecording = false;
+        let currentMode = 'PRACTICE';
+        let realVoiceRecognition = null;
+        let voiceAnswer = '';
         
-        // 页面加载
         document.addEventListener('DOMContentLoaded', function() {
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
@@ -650,7 +741,6 @@
             }
         });
         
-        // 切换登录注册
         function showRegister() {
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('registerForm').classList.remove('hidden');
@@ -661,16 +751,13 @@
             document.getElementById('loginForm').classList.remove('hidden');
         }
         
-        // 登录
         async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
-            
             if (!username || !password) {
                 showToast('请输入用户名和密码', 'error');
                 return;
             }
-            
             try {
                 const resp = await fetch(API_BASE + '/user/login', {
                     method: 'POST',
@@ -678,7 +765,6 @@
                     body: JSON.stringify({ username, password })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     currentUser = data.data;
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -692,17 +778,14 @@
             }
         }
         
-        // 注册
         async function register() {
             const username = document.getElementById('regUsername').value.trim();
             const password = document.getElementById('regPassword').value.trim();
             const realName = document.getElementById('regRealName').value.trim();
-            
             if (!username || !password) {
                 showToast('请输入用户名和密码', 'error');
                 return;
             }
-            
             try {
                 const resp = await fetch(API_BASE + '/user/register', {
                     method: 'POST',
@@ -710,7 +793,6 @@
                     body: JSON.stringify({ username, password, realName })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     showToast('注册成功，请登录', 'success');
                     showLogin();
@@ -722,7 +804,6 @@
             }
         }
         
-        // 退出登录
         function logout() {
             currentUser = null;
             localStorage.removeItem('currentUser');
@@ -730,44 +811,31 @@
             document.getElementById('mainSection').style.display = 'none';
         }
         
-        // 显示主界面
         async function showMainSection() {
             document.getElementById('authSection').classList.add('hidden');
             document.getElementById('mainSection').style.display = 'block';
-            
-            // 加载岗位列表
             await loadPositions();
-            
-            // 填充个人信息
             document.getElementById('profileUsername').value = currentUser.username;
             document.getElementById('profileRealName').value = currentUser.realName || '';
             document.getElementById('profileMajor').value = currentUser.major || '';
             document.getElementById('profileUniversity').value = currentUser.university || '';
             document.getElementById('profileTarget').value = currentUser.targetPosition || '';
-            
-            // 检查是否有进行中的面试
             await checkInProgressInterview();
         }
 
-        // 检查进行中的面试
         async function checkInProgressInterview() {
             try {
                 const resp = await fetch(API_BASE + `/interview/resume/${currentUser.id}`);
                 const data = await resp.json();
-                
                 if (data.code === 200 && data.data && data.data.hasInProgress) {
                     const session = data.data;
-                    
-                    // 显示恢复提示（使用原生 confirm 对话框）
+                    const modeName = session.interviewMode === 'REAL' ? '真实面试' : '练习模式';
                     const shouldResume = confirm(
-                        `您有一个进行中的面试（${getPositionName(session.positionId)}），进度：${session.questionIndex}/${session.totalQuestions}。\n点击"确定"继续面试，点击"取消"放弃面试。`
+                        `您有一个进行中的${modeName}面试（${getPositionName(session.positionId)}），进度：${session.questionIndex}/${session.totalQuestions}。\n点击"确定"继续面试，点击"取消"放弃面试。`
                     );
-                    
                     if (shouldResume) {
-                        // 恢复面试
                         await resumeExistingInterview(session.sessionId, session.positionId, session.questionIndex);
                     } else {
-                        // 拒绝恢复，退出面试并删除记录
                         await rejectResume(session.sessionId);
                     }
                 }
@@ -776,18 +844,14 @@
             }
         }
 
-        // 拒绝恢复面试（删除记录）
         async function rejectResume(sessionId) {
             try {
                 const resp = await fetch(API_BASE + `/interview/${sessionId}/exit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
+                    body: JSON.stringify({ userId: currentUser.id })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     showToast('已放弃恢复面试', 'success');
                 }
@@ -796,34 +860,24 @@
             }
         }
 
-        // 恢复已有的面试
         async function resumeExistingInterview(sessionId, positionCode, questionIndex) {
             try {
                 const resp = await fetch(API_BASE + `/interview/${sessionId}`);
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     currentSession = data.data;
                     currentQuestionIndex = questionIndex;
-                    
-                    // 切换到面试标签页
                     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.nav-tab')[1].classList.add('active');
                     document.getElementById('interviewTab').classList.add('active');
-                    
-                    // 显示面试界面
                     document.getElementById('interviewStart').classList.add('hidden');
                     document.getElementById('interviewing').classList.remove('hidden');
                     document.getElementById('interviewResult').classList.add('hidden');
-                    
-                    // 更新岗位信息
                     const position = positions.find(p => p.code === positionCode);
                     document.getElementById('interviewPosition').textContent = '岗位：' + (position ? position.name : getPositionName(positionCode));
-                    
-                    // 加载当前问题
+                    setupInterviewMode(currentSession.interviewMode);
                     loadQuestionWithIndex(questionIndex);
-                    
                     showToast('已恢复面试', 'success');
                 } else {
                     showToast('恢复面试失败：' + data.message, 'error');
@@ -833,33 +887,34 @@
             }
         }
 
-        // 根据索引加载问题
         function loadQuestionWithIndex(index) {
             currentQuestionIndex = index;
             loadQuestion();
         }
         
-        // 切换标签页
+        function selectMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            document.querySelector(`input[name="interviewMode"][value="${mode}"]`).checked = true;
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            
             event.target.classList.add('active');
             document.getElementById(tabName + 'Tab').classList.add('active');
-            
             if (tabName === 'history') {
                 loadHistory();
-            } else if (tabName === 'profile') {
-                loadResumeInfo();
             }
         }
         
-        // 加载岗位列表
         async function loadPositions() {
             try {
                 const resp = await fetch(API_BASE + '/position/list');
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     positions = data.data;
                     renderPositions(positions);
@@ -869,7 +924,6 @@
             }
         }
         
-        // 渲染岗位卡片
         function renderPositions(positions) {
             const grid = document.getElementById('positionGrid');
             grid.innerHTML = positions.map(p => `
@@ -885,7 +939,6 @@
             `).join('');
         }
         
-        // 开始面试
         async function startInterview(positionCode) {
             try {
                 const resp = await fetch(API_BASE + '/interview/start', {
@@ -893,31 +946,24 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userId: currentUser.id,
-                        positionCode: positionCode
+                        positionCode: positionCode,
+                        interviewMode: currentMode
                     })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     currentSession = data.data;
                     currentQuestionIndex = 0;
-                    
-                    // 切换到面试标签页
                     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.nav-tab')[1].classList.add('active');
                     document.getElementById('interviewTab').classList.add('active');
-                    
-                    // 显示面试界面
                     document.getElementById('interviewStart').classList.add('hidden');
                     document.getElementById('interviewing').classList.remove('hidden');
                     document.getElementById('interviewResult').classList.add('hidden');
-                    
-                    // 更新岗位信息
                     const position = positions.find(p => p.code === positionCode);
                     document.getElementById('interviewPosition').textContent = '岗位：' + position.name;
-                    
-                    // 加载第一个问题
+                    setupInterviewMode(currentSession.interviewMode);
                     loadQuestion();
                 } else {
                     showToast(data.message, 'error');
@@ -927,9 +973,43 @@
             }
         }
         
-        // 加载问题
+        function setupInterviewMode(mode) {
+            const answerInput = document.getElementById('answerInput');
+            const realModeArea = document.getElementById('realModeAnswerArea');
+            const voiceBtnReal = document.getElementById('voiceBtnReal');
+            const voiceBtnPractice = document.getElementById('voiceBtnPractice');
+            const modeBadge = document.getElementById('interviewModeBadge');
+            
+            voiceAnswer = '';
+            isRecording = false;
+            if (realVoiceRecognition) {
+                try { realVoiceRecognition.stop(); } catch (e) {}
+                realVoiceRecognition = null;
+            }
+            
+            if (mode === 'REAL') {
+                answerInput.classList.add('hidden');
+                realModeArea.classList.remove('hidden');
+                voiceBtnReal.style.display = '';
+                voiceBtnPractice.style.display = 'none';
+                voiceBtnReal.textContent = '🎤 开始录音';
+                voiceBtnReal.classList.remove('recording');
+                document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
+                modeBadge.textContent = '🎤 真实面试';
+                modeBadge.className = 'mode-badge real';
+            } else {
+                answerInput.classList.remove('hidden');
+                realModeArea.classList.add('hidden');
+                voiceBtnReal.style.display = 'none';
+                voiceBtnPractice.style.display = '';
+                answerInput.value = '';
+                answerInput.readOnly = false;
+                modeBadge.textContent = '📝 练习模式';
+                modeBadge.className = 'mode-badge practice';
+            }
+        }
+        
         function loadQuestion() {
-            // 这里应该从后端获取问题，暂时使用模拟数据
             const questions = {
                 'backend': [
                     '请解释一下 HashMap 的实现原理，以及 JDK1.8 之后做了什么优化？',
@@ -992,13 +1072,25 @@
             }
         }
         
-        // 提交回答
         async function submitAnswer() {
-            const answer = document.getElementById('answerInput').value.trim();
+            let answer = '';
+            let answerType = 'text';
             
-            if (!answer) {
-                showToast('请输入回答内容', 'error');
-                return;
+            if (currentSession && currentSession.interviewMode === 'REAL') {
+                // 真实面试模式：使用语音回答
+                answer = voiceAnswer.trim();
+                answerType = 'voice';
+                if (!answer) {
+                    showToast('请先进行语音录音', 'error');
+                    return;
+                }
+            } else {
+                // 练习模式：使用文本输入
+                answer = document.getElementById('answerInput').value.trim();
+                if (!answer) {
+                    showToast('请输入回答内容', 'error');
+                    return;
+                }
             }
             
             try {
@@ -1008,113 +1100,112 @@
                     body: JSON.stringify({
                         userId: currentUser.id,
                         answer: answer,
-                        answerType: 'text'
+                        answerType: answerType
                     })
                 });
                 const data = await resp.json();
                 
                 if (data.code === 200) {
                     const response = data.data;
-                    
                     if (response.isFinished) {
-                        // 面试结束，显示报告
                         showReport(response.report);
                     } else {
-                        // 继续下一题
                         currentQuestionIndex++;
                         loadQuestion();
-                        document.getElementById('answerInput').value = '';
+                        // 重置回答区域
+                        if (currentSession.interviewMode === 'REAL') {
+                            voiceAnswer = '';
+                            document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
+                            document.getElementById('voiceBtnReal').textContent = '🎤 开始录音';
+                            document.getElementById('voiceBtnReal').classList.remove('recording');
+                        } else {
+                            document.getElementById('answerInput').value = '';
+                        }
                         showToast('回答已提交', 'success');
                     }
                 } else {
                     showToast(data.message, 'error');
                 }
             } catch (e) {
-                // 本地模拟提交
                 currentQuestionIndex++;
                 if (currentQuestionIndex >= 10) {
                     showReport(createMockReport());
                 } else {
                     loadQuestion();
-                    document.getElementById('answerInput').value = '';
+                    if (currentSession && currentSession.interviewMode === 'REAL') {
+                        voiceAnswer = '';
+                        document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
+                    } else {
+                        document.getElementById('answerInput').value = '';
+                    }
                     showToast('回答已提交', 'success');
                 }
             }
         }
         
-        // 跳过问题
         async function skipQuestion() {
             try {
                 const resp = await fetch(API_BASE + `/interview/${currentSession.id}/skip`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
+                    body: JSON.stringify({ userId: currentUser.id })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     const response = data.data;
-                    
                     if (response.isFinished) {
-                        // 面试结束，显示报告
                         showReport(response.report);
                     } else {
-                        // 继续下一题
                         currentQuestionIndex++;
                         loadQuestion();
-                        document.getElementById('answerInput').value = '';
+                        if (currentSession.interviewMode === 'REAL') {
+                            voiceAnswer = '';
+                            document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
+                            document.getElementById('voiceBtnReal').textContent = '🎤 开始录音';
+                            document.getElementById('voiceBtnReal').classList.remove('recording');
+                        } else {
+                            document.getElementById('answerInput').value = '';
+                        }
                         showToast('已跳过此题', 'success');
                     }
                 } else {
                     showToast(data.message || '跳过失败', 'error');
                 }
             } catch (e) {
-                // 本地降级处理
                 currentQuestionIndex++;
                 if (currentQuestionIndex >= 10) {
                     showToast('跳过所有问题将获得最低分', 'error');
-                    showReport(createMockReport(true)); // 全部跳过给最低分
+                    showReport(createMockReport(true));
                 } else {
                     loadQuestion();
-                    document.getElementById('answerInput').value = '';
                 }
             }
         }
 
-        // 退出面试（不保存任何记录）
         async function exitInterview() {
             if (!confirm('确定要退出面试吗？退出后将不会保存任何面试记录。')) {
                 return;
             }
-            
             if (!currentSession || !currentSession.id) {
-                // 如果没有会话，直接返回岗位选择
                 currentSession = null;
                 document.getElementById('interviewing').classList.add('hidden');
                 document.getElementById('interviewStart').classList.remove('hidden');
                 showToast('已退出面试', 'success');
                 return;
             }
-            
             const sessionId = currentSession.id;
             try {
                 const resp = await fetch(API_BASE + `/interview/${sessionId}/exit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.id
-                    })
+                    body: JSON.stringify({ userId: currentUser.id })
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
-                    // 清除本地状态
                     currentSession = null;
                     currentQuestionIndex = 0;
-                    
-                    // 返回岗位选择
+                    voiceAnswer = '';
+                    isRecording = false;
                     document.getElementById('interviewing').classList.add('hidden');
                     document.getElementById('interviewStart').classList.remove('hidden');
                     document.getElementById('interviewResult').classList.add('hidden');
@@ -1123,9 +1214,10 @@
                     showToast('退出失败：' + (data.message || '未知错误'), 'error');
                 }
             } catch (e) {
-                // 即使 API 调用失败，也清除本地状态（确保用户体验一致）
                 currentSession = null;
                 currentQuestionIndex = 0;
+                voiceAnswer = '';
+                isRecording = false;
                 document.getElementById('interviewing').classList.add('hidden');
                 document.getElementById('interviewStart').classList.remove('hidden');
                 document.getElementById('interviewResult').classList.add('hidden');
@@ -1133,12 +1225,10 @@
             }
         }
         
-        // 显示评估报告
         function showReport(report) {
             document.getElementById('interviewing').classList.add('hidden');
             document.getElementById('interviewResult').classList.remove('hidden');
             
-            // 渲染分数
             const scoreGrid = document.getElementById('scoreGrid');
             scoreGrid.innerHTML = `
                 <div class="score-item">
@@ -1167,32 +1257,23 @@
                 </div>
             `;
             
-            // 渲染亮点
             const strengthsList = document.getElementById('strengthsList');
             const strengths = (report.strengths || '候选人展现了良好的专业知识基础，对核心概念有清晰理解。').split(/[,.]/).filter(s => s.trim());
             strengthsList.innerHTML = strengths.map(s => `<li>• ${s.trim()}</li>`).join('');
             
-            // 渲染不足
             const weaknessesList = document.getElementById('weaknessesList');
             const weaknesses = (report.weaknesses || '部分问题回答不够深入，需要加强对底层原理的理解。').split(/[,.]/).filter(w => w.trim());
             weaknessesList.innerHTML = weaknesses.map(w => `<li>• ${w.trim()}</li>`).join('');
             
-            // 渲染建议
             document.getElementById('suggestionsText').textContent = 
                 report.suggestions || '建议加强基础知识学习，多做项目实践，阅读优秀开源项目源码。';
         }
         
-        // 创建模拟报告
         function createMockReport(allSkipped) {
             if (allSkipped) {
-                // 全部跳过给最低分 10 分
                 return {
-                    technicalScore: 10,
-                    communicationScore: 10,
-                    logicScore: 10,
-                    adaptabilityScore: 10,
-                    matchingScore: 10,
-                    overallScore: 10,
+                    technicalScore: 10, communicationScore: 10, logicScore: 10,
+                    adaptabilityScore: 10, matchingScore: 10, overallScore: 10,
                     strengths: '无',
                     weaknesses: '候选人跳过了所有问题，未展现任何能力',
                     suggestions: '建议勇敢尝试回答问题，即使不会也可以展示思考过程'
@@ -1211,19 +1292,14 @@
             };
         }
         
-        // 加载历史记录
         async function loadHistory() {
             const historyList = document.getElementById('historyList');
-            
             try {
-                // 加载面试会话历史
                 const sessionResp = await fetch(API_BASE + `/interview/history/${currentUser.id}`);
                 const sessionData = await sessionResp.json();
                 
                 if (sessionData.code === 200 && sessionData.data && sessionData.data.length > 0) {
                     const sessions = sessionData.data;
-                    
-                    // 渲染历史记录
                     historyList.innerHTML = sessions.map(session => {
                         const date = session.startTime ? new Date(session.startTime).toLocaleString('zh-CN') : '未知时间';
                         const status = session.status === 'COMPLETED' ? '已完成' : '进行中';
@@ -1231,11 +1307,14 @@
                         const total = session.totalQuestions || 10;
                         const skipped = session.skippedQuestions || 0;
                         const scoreText = session.status === 'COMPLETED' ? '加载中...' : '进行中';
+                        const mode = session.interviewMode || 'PRACTICE';
+                        const modeLabel = mode === 'REAL' ? '🎤 真实' : '📝 练习';
+                        const modeClass = mode === 'REAL' ? 'real' : 'practice';
                         
                         return `
                             <div class="history-item">
                                 <div class="history-info" onclick="viewSessionReport(${session.id})" style="cursor: pointer; flex: 1;">
-                                    <h4>${getPositionName(session.positionId)} - ${status}</h4>
+                                    <h4>${getPositionName(session.positionId)} - ${status}<span class="history-mode ${modeClass}">${modeLabel}</span></h4>
                                     <p>时间：${date} | 进度：${answered}/${total} | 跳过：${skipped}</p>
                                 </div>
                                 <div class="history-actions">
@@ -1246,7 +1325,6 @@
                         `;
                     }).join('');
                     
-                    // 加载每个会话的评分
                     sessions.forEach(session => {
                         if (session.status === 'COMPLETED') {
                             loadSessionScore(session.id);
@@ -1261,26 +1339,14 @@
             }
         }
         
-        // 删除面试会话记录
         async function deleteInterviewSession(sessionId, event) {
-            // 阻止事件冒泡，防止触发查看报告
-            if (event) {
-                event.stopPropagation();
-            }
-            
-            if (!confirm('确定要删除这条面试记录吗？删除后将无法恢复。')) {
-                return;
-            }
-            
+            if (event) event.stopPropagation();
+            if (!confirm('确定要删除这条面试记录吗？删除后将无法恢复。')) return;
             try {
-                const resp = await fetch(API_BASE + `/interview/${sessionId}`, {
-                    method: 'DELETE'
-                });
+                const resp = await fetch(API_BASE + `/interview/${sessionId}`, { method: 'DELETE' });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     showToast('面试记录已删除', 'success');
-                    // 重新加载历史记录
                     await loadHistory();
                 } else {
                     showToast(data.message || '删除失败', 'error');
@@ -1290,7 +1356,6 @@
             }
         }
         
-        // 获取岗位名称
         function getPositionName(positionId) {
             const names = {
                 'backend': '后端开发工程师',
@@ -1301,59 +1366,41 @@
             return names[positionId] || positionId || '未知岗位';
         }
         
-        // 加载会话评分
         async function loadSessionScore(sessionId) {
             try {
                 const resp = await fetch(API_BASE + `/interview/${sessionId}/report`);
                 const data = await resp.json();
-                
                 if (data.code === 200 && data.data) {
                     const score = data.data.overallScore || 0;
                     const scoreEl = document.getElementById(`score_${sessionId}`);
                     if (scoreEl) {
                         scoreEl.textContent = score + '分';
-                        // 根据分数设置颜色
-                        if (score >= 80) {
-                            scoreEl.style.color = '#00d4ff';
-                        } else if (score >= 60) {
-                            scoreEl.style.color = '#ffa500';
-                        } else {
-                            scoreEl.style.color = '#ff4b2b';
-                        }
+                        if (score >= 80) scoreEl.style.color = '#00d4ff';
+                        else if (score >= 60) scoreEl.style.color = '#ffa500';
+                        else scoreEl.style.color = '#ff4b2b';
                     }
                 } else {
                     document.getElementById(`score_${sessionId}`).textContent = '无评分';
                 }
             } catch (e) {
-                console.error('加载评分失败', e);
                 document.getElementById(`score_${sessionId}`).textContent = '加载失败';
             }
         }
         
-        // 查看会话报告
         function viewSessionReport(sessionId) {
-            // 跳转到面试结果页面并加载报告
             switchTab('interview');
             document.getElementById('interviewStart').classList.add('hidden');
             document.getElementById('interviewing').classList.add('hidden');
             document.getElementById('interviewResult').classList.remove('hidden');
-            
-            // 加载报告
             fetch(API_BASE + `/interview/${sessionId}/report`)
                 .then(resp => resp.json())
                 .then(data => {
-                    if (data.code === 200 && data.data) {
-                        showReport(data.data);
-                    } else {
-                        showToast('报告加载失败', 'error');
-                    }
+                    if (data.code === 200 && data.data) showReport(data.data);
+                    else showToast('报告加载失败', 'error');
                 })
-                .catch(e => {
-                    showToast('报告加载失败：' + e.message, 'error');
-                });
+                .catch(e => showToast('报告加载失败：' + e.message, 'error'));
         }
         
-        // 保存个人信息
         async function saveProfile() {
             const profile = {
                 realName: document.getElementById('profileRealName').value,
@@ -1361,7 +1408,6 @@
                 university: document.getElementById('profileUniversity').value,
                 targetPosition: document.getElementById('profileTarget').value
             };
-            
             try {
                 const resp = await fetch(API_BASE + `/user/${currentUser.id}`, {
                     method: 'PUT',
@@ -1369,7 +1415,6 @@
                     body: JSON.stringify(profile)
                 });
                 const data = await resp.json();
-                
                 if (data.code === 200) {
                     currentUser = data.data;
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -1382,7 +1427,63 @@
             }
         }
         
-        // 语音输入（使用浏览器 Web Speech API）
+        // 真实面试模式的语音输入
+        function toggleVoiceReal() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                showToast('您的浏览器不支持语音输入', 'error');
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const voiceBtn = document.getElementById('voiceBtnReal');
+            const voiceText = document.getElementById('voiceAnswerText');
+            
+            if (isRecording) {
+                isRecording = false;
+                if (realVoiceRecognition) realVoiceRecognition.stop();
+                voiceBtn.textContent = '🎤 开始录音';
+                voiceBtn.classList.remove('recording');
+                showToast('录音已停止', 'success');
+            } else {
+                isRecording = true;
+                voiceAnswer = '';
+                voiceText.textContent = '正在聆听...';
+                voiceBtn.textContent = '⏹ 停止录音';
+                voiceBtn.classList.add('recording');
+                
+                realVoiceRecognition = new SpeechRecognition();
+                realVoiceRecognition.lang = 'zh-CN';
+                realVoiceRecognition.continuous = true;
+                realVoiceRecognition.interimResults = true;
+                
+                realVoiceRecognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (finalTranscript) {
+                        voiceAnswer += finalTranscript;
+                        voiceText.textContent = voiceAnswer;
+                    }
+                };
+                
+                realVoiceRecognition.onerror = function(event) {
+                    showToast('语音识别错误：' + event.error, 'error');
+                };
+                
+                realVoiceRecognition.onend = function() {
+                    if (isRecording) {
+                        try { realVoiceRecognition.start(); } catch (e) {}
+                    }
+                };
+                
+                realVoiceRecognition.start();
+            }
+        }
+
+        // 练习模式的语音输入
         function toggleVoice() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 showToast('您的浏览器不支持语音输入', 'error');
@@ -1393,12 +1494,12 @@
             
             if (isRecording) {
                 isRecording = false;
-                document.getElementById('voiceBtn').classList.remove('recording');
-                document.getElementById('voiceBtn').textContent = '🎤 语音输入';
+                document.getElementById('voiceBtnPractice').textContent = '🎤 语音输入';
+                document.getElementById('voiceBtnPractice').classList.remove('recording');
             } else {
                 isRecording = true;
-                document.getElementById('voiceBtn').classList.add('recording');
-                document.getElementById('voiceBtn').textContent = '⏹ 停止录音';
+                document.getElementById('voiceBtnPractice').textContent = '⏹ 停止录音';
+                document.getElementById('voiceBtnPractice').classList.add('recording');
                 
                 const recognition = new SpeechRecognition();
                 recognition.lang = 'zh-CN';
@@ -1421,164 +1522,24 @@
                 recognition.onerror = function(event) {
                     showToast('语音识别错误：' + event.error, 'error');
                     isRecording = false;
-                    document.getElementById('voiceBtn').classList.remove('recording');
-                    document.getElementById('voiceBtn').textContent = '🎤 语音输入';
+                    document.getElementById('voiceBtnPractice').classList.remove('recording');
+                    document.getElementById('voiceBtnPractice').textContent = '🎤 语音输入';
                 };
                 
                 recognition.onend = function() {
-                    if (isRecording) {
-                        recognition.start();
-                    }
+                    if (isRecording) recognition.start();
                 };
                 
                 recognition.start();
             }
         }
         
-        // 提示消息
         function showToast(message, type) {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.textContent = message;
             document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
-        }
-        
-        // ==================== 简历相关功能 ====================
-        
-        // 上传简历
-        async function uploadResume() {
-            const fileInput = document.getElementById('resumeFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showToast('请选择要上传的简历文件', 'error');
-                return;
-            }
-            
-            if (file.type !== 'application/pdf') {
-                showToast('只支持 PDF 格式的简历文件', 'error');
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) {
-                showToast('简历文件大小不能超过 10MB', 'error');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const uploadBtn = document.getElementById('uploadResumeBtn');
-            uploadBtn.disabled = true;
-            uploadBtn.textContent = '上传中...';
-            
-            try {
-                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await resp.json();
-                
-                if (data.code === 200) {
-                    showToast('简历上传成功', 'success');
-                    fileInput.value = '';
-                    await loadResumeInfo();
-                } else {
-                    showToast(data.message, 'error');
-                }
-            } catch (e) {
-                showToast('上传失败：' + e.message, 'error');
-            } finally {
-                uploadBtn.disabled = false;
-                uploadBtn.textContent = '上传简历';
-            }
-        }
-        
-        // 加载简历信息
-        async function loadResumeInfo() {
-            try {
-                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`);
-                const data = await resp.json();
-                
-                if (data.code === 200 && data.data) {
-                    const resume = data.data;
-                    
-                    // 显示简历信息
-                    document.getElementById('resumeFileName').textContent = resume.fileName;
-                    document.getElementById('resumeFileSize').textContent = formatFileSize(resume.fileSize);
-                    document.getElementById('resumeUploadTime').textContent = formatDateTime(resume.uploadedAt);
-                    
-                    document.getElementById('resumeUploadSection').classList.add('hidden');
-                    document.getElementById('resumeInfoSection').classList.remove('hidden');
-                } else {
-                    // 没有简历
-                    document.getElementById('resumeUploadSection').classList.remove('hidden');
-                    document.getElementById('resumeInfoSection').classList.add('hidden');
-                }
-            } catch (e) {
-                console.error('加载简历信息失败', e);
-                document.getElementById('resumeUploadSection').classList.remove('hidden');
-                document.getElementById('resumeInfoSection').classList.add('hidden');
-            }
-        }
-        
-        // 显示上传区域（重新上传）
-        function showUploadSection() {
-            document.getElementById('resumeUploadSection').classList.remove('hidden');
-            document.getElementById('resumeInfoSection').classList.add('hidden');
-        }
-        
-        // 查看简历（在新窗口打开 PDF）
-        function viewResume() {
-            window.open(API_BASE + `/user/${currentUser.id}/resume/view`, '_blank');
-        }
-        
-        // 删除简历
-        async function deleteResume() {
-            if (!confirm('确定要删除已上传的简历吗？')) {
-                return;
-            }
-            
-            try {
-                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
-                    method: 'DELETE'
-                });
-                const data = await resp.json();
-                
-                if (data.code === 200) {
-                    showToast('简历已删除', 'success');
-                    document.getElementById('resumeUploadSection').classList.remove('hidden');
-                    document.getElementById('resumeInfoSection').classList.add('hidden');
-                    document.getElementById('resumeFile').value = '';
-                } else {
-                    showToast(data.message, 'error');
-                }
-            } catch (e) {
-                showToast('删除失败：' + e.message, 'error');
-            }
-        }
-        
-        // 格式化文件大小
-        function formatFileSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-        }
-        
-        // 格式化日期时间
-        function formatDateTime(dateTimeStr) {
-            if (!dateTimeStr) return '未知时间';
-            try {
-                // 处理 LocalDateTime 格式 (YYYY-MM-DDTHH:MM:SS)
-                const date = new Date(dateTimeStr.replace(' ', 'T'));
-                return date.toLocaleString('zh-CN');
-            } catch (e) {
-                return dateTimeStr;
-            }
+            setTimeout(() => toast.remove(), 3000);
         }
     </script>
 </body>

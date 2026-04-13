@@ -67,6 +67,10 @@ public class InterviewSession {
     @Column
     private Boolean isAbandoned;
 
+    // 面试模式：REAL（真实面试-语音）/ PRACTICE（练习面试-文字）
+    @Column(length = 20)
+    private String interviewMode;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -195,5 +199,13 @@ public class InterviewSession {
 
     public void setIsAbandoned(Boolean isAbandoned) {
         this.isAbandoned = isAbandoned;
+    }
+
+    public String getInterviewMode() {
+        return interviewMode;
+    }
+
+    public void setInterviewMode(String interviewMode) {
+        this.interviewMode = interviewMode;
     }
 }
