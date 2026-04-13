@@ -6,6 +6,7 @@ import com.alibaba.fastjson.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -17,6 +18,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * RAG (检索增强生成) 服务
@@ -38,6 +42,23 @@ public class RagService {
 
     @Autowired
     private LlmService llmService;
+
+    @Autowired
+    private EmbeddingService embeddingService;
+
+    @Autowired
+    private VectorStoreService vectorStoreService;
+
+    // 是否启用向量增强搜索
+    @Value("${app.rag.enable-vector-search:true}")
+    private boolean enableVectorSearch;
+
+    // 向量搜索权重（混合搜索时向量所占权重）
+    @Value("${app.rag.vector-weight:0.7}")
+    private double vectorWeight;
+
+    // 异步任务线程池，用于向量化知识库
+    private final ExecutorService vectorizationExecutor = Executors.newFixedThreadPool(2);
 
     // 知识库数据：positionId -> category -> List<KnowledgeItem>
     private final Map<String, Map<String, List<KnowledgeItem>>> knowledgeBase = new ConcurrentHashMap<>();
@@ -77,6 +98,10 @@ public class RagService {
     public void init() {
         try {
             loadKnowledgeBase();
+            // 异步向量化知识库
+            if (enableVectorSearch) {
+                vectorizationExecutor.submit(this::vectorizeKnowledgeBase);
+            }
         } catch (Exception e) {
             log.warn("知识库加载失败（可能是文件损坏），将重新创建。错误：{}", e.getMessage());
         }
@@ -617,5 +642,220 @@ public class RagService {
             case "algorithm" -> "算法工程师";
             default -> "技术岗位";
         };
+    }
+
+    // ==================== 向量增强搜索功能 ====================
+
+    /**
+     * 向量化整个知识库
+     * 在应用启动时异步执行，或手动触发
+     */
+    public void vectorizeKnowledgeBase() {
+        log.info("开始向量化知识库...");
+        int totalVectorized = 0;
+
+        for (Map.Entry<String, Map<String, List<KnowledgeItem>>> positionEntry : knowledgeBase.entrySet()) {
+            String positionId = positionEntry.getKey();
+            log.info("正在向量化岗位 [{}] 的知识...", positionId);
+
+            // 先删除该岗位的旧向量
+            vectorStoreService.deleteByPosition(positionId);
+
+            for (Map.Entry<String, List<KnowledgeItem>> categoryEntry : positionEntry.getValue().entrySet()) {
+                String category = categoryEntry.getKey();
+                List<KnowledgeItem> items = categoryEntry.getValue();
+
+                for (KnowledgeItem item : items) {
+                    try {
+                        // 将标题+内容+标签组合为向量输入文本
+                        String vectorInput = buildVectorInput(item);
+                        float[] vector = embeddingService.getEmbedding(vectorInput);
+
+                        // 保存到向量存储
+                        String vectorId = positionId + "_" + category + "_" + item.id;
+                        vectorStoreService.saveVector(
+                            vectorId,
+                            positionId,
+                            category,
+                            item.title,
+                            item.content,
+                            item.tags,
+                            vector
+                        );
+                        totalVectorized++;
+                    } catch (Exception e) {
+                        log.error("向量化知识条目失败: positionId={}, category={}, id={}", 
+                            positionId, category, item.id, e);
+                    }
+                }
+            }
+        }
+
+        log.info("知识库向量化完成，共向量化 {} 条知识", totalVectorized);
+    }
+
+    /**
+     * 构建用于向量化的输入文本
+     * 组合标题、内容、标签，提供更丰富的语义表示
+     */
+    private String buildVectorInput(KnowledgeItem item) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(item.title);
+        if (item.content != null && !item.content.isEmpty()) {
+            sb.append(" ").append(item.content);
+        }
+        if (item.tags != null && !item.tags.isEmpty()) {
+            sb.append(" ").append(item.tags);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 增强检索：结合关键词匹配和向量语义搜索
+     *
+     * @param positionId 岗位 ID
+     * @param query 查询文本
+     * @param limit 返回数量
+     * @return 检索结果列表
+     */
+    public List<KnowledgeItem> retrieveKnowledgeEnhanced(String positionId, String query, int limit) {
+        // 如果向量搜索未启用，回退到纯关键词匹配
+        if (!enableVectorSearch || vectorStoreService.isEmpty()) {
+            log.debug("向量搜索未启用或向量库为空，使用关键词匹配检索");
+            return retrieveKnowledge(positionId, query, limit);
+        }
+
+        try {
+            // 获取查询向量
+            float[] queryVector = embeddingService.getEmbedding(query);
+
+            // 执行混合搜索
+            List<VectorStoreService.VectorSearchResult> vectorResults = 
+                vectorStoreService.hybridSearch(query, queryVector, positionId, limit, vectorWeight);
+
+            // 将向量搜索结果转换为 KnowledgeItem
+            List<KnowledgeItem> enhancedResults = new ArrayList<>();
+            for (VectorStoreService.VectorSearchResult result : vectorResults) {
+                KnowledgeItem item = new KnowledgeItem();
+                item.id = result.getId();
+                item.positionId = result.getPositionId();
+                item.category = result.getCategory();
+                item.title = result.getTitle();
+                item.content = result.getContent();
+                item.tags = result.getTags();
+                enhancedResults.add(item);
+            }
+
+            log.debug("增强检索完成，返回 {} 条结果，向量权重: {}", enhancedResults.size(), vectorWeight);
+            return enhancedResults;
+
+        } catch (Exception e) {
+            log.error("向量增强检索失败，回退到关键词匹配: {}", e.getMessage(), e);
+            return retrieveKnowledge(positionId, query, limit);
+        }
+    }
+
+    /**
+     * 仅使用向量搜索
+     *
+     * @param positionId 岗位 ID
+     * @param query 查询文本
+     * @param limit 返回数量
+     * @return 向量搜索结果
+     */
+    public List<KnowledgeItem> retrieveKnowledgeByVector(String positionId, String query, int limit) {
+        if (vectorStoreService.isEmpty()) {
+            log.warn("向量库为空，无法进行向量搜索");
+            return new ArrayList<>();
+        }
+
+        try {
+            float[] queryVector = embeddingService.getEmbedding(query);
+            List<VectorStoreService.VectorSearchResult> vectorResults = 
+                vectorStoreService.searchByVector(queryVector, positionId, limit);
+
+            List<KnowledgeItem> results = new ArrayList<>();
+            for (VectorStoreService.VectorSearchResult result : vectorResults) {
+                KnowledgeItem item = new KnowledgeItem();
+                item.id = result.getId();
+                item.positionId = result.getPositionId();
+                item.category = result.getCategory();
+                item.title = result.getTitle();
+                item.content = result.getContent();
+                item.tags = result.getTags();
+                results.add(item);
+            }
+            return results;
+        } catch (Exception e) {
+            log.error("向量搜索失败: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 构建增强 RAG 上下文
+     * 使用增强检索获取相关知识
+     */
+    public String buildRagContextEnhanced(String positionId, String query) {
+        List<KnowledgeItem> relevantKnowledge = retrieveKnowledgeEnhanced(positionId, query, 5);
+        
+        if (relevantKnowledge.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder context = new StringBuilder();
+        context.append("【相关知识库（向量增强检索）】\n");
+        for (KnowledgeItem item : relevantKnowledge) {
+            context.append(String.format("- %s: %s\n", item.title, item.content));
+        }
+        
+        return context.toString();
+    }
+
+    /**
+     * 使用 RAG 增强的大模型调用（增强版）
+     */
+    public String chatWithRagEnhanced(String positionId, String query, String systemPrompt) {
+        String ragContext = buildRagContextEnhanced(positionId, query);
+        
+        String enhancedPrompt = query;
+        if (!ragContext.isEmpty()) {
+            enhancedPrompt = ragContext + "\n\n【问题】\n" + query;
+        }
+
+        return llmService.simpleChat(enhancedPrompt, systemPrompt);
+    }
+
+    /**
+     * 手动触发知识库向量化
+     */
+    public void triggerVectorization() {
+        vectorizationExecutor.submit(this::vectorizeKnowledgeBase);
+        log.info("已提交知识库向量化任务");
+    }
+
+    /**
+     * 获取向量化状态
+     */
+    public Map<String, Object> getVectorizationStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("enableVectorSearch", enableVectorSearch);
+        status.put("vectorWeight", vectorWeight);
+        status.put("vectorCount", vectorStoreService.getCount());
+        status.put("embeddingCacheSize", embeddingService.getCacheSize());
+        status.put("vectorStoreEmpty", vectorStoreService.isEmpty());
+        return status;
+    }
+
+    /**
+     * 设置向量搜索权重
+     */
+    public void setVectorWeight(double weight) {
+        if (weight >= 0.0 && weight <= 1.0) {
+            this.vectorWeight = weight;
+            log.info("向量搜索权重已设置为: {}", weight);
+        } else {
+            log.warn("无效的权重值: {}，权重必须在 0-1 之间", weight);
+        }
     }
 }

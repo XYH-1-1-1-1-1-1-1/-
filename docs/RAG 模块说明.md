@@ -263,37 +263,89 @@ git pull origin main
 ragService.loadKnowledgeBase();  // 重新加载知识库
 ```
 
-## 七、优化方向
+## 七、向量增强搜索
 
-### 7.1 检索优化
+### 7.1 架构概述
 
-当前实现基于关键词匹配，可优化为：
+当前 RAG 模块已升级为**向量增强搜索**架构，结合了传统的关键词匹配和先进的语义向量搜索：
 
-- **向量检索**：使用 Embedding 模型计算语义相似度
-- **混合检索**：关键词 + 向量检索结合
-- **重排序**：使用 Cross-Encoder 对检索结果重排序
+```
+┌──────────────┐     ┌───────────────┐     ┌───────────────┐
+│   用户输入    │ ──→ │ EmbeddingSvc  │ ──→ │ VectorStore   │
+│              │     │ 文本→向量转换  │     │ 向量相似度检索 │
+└──────────────┘     └───────────────┘     └───────────────┘
+         │                      │                      │
+         │                      │                      ▼
+         │              ┌───────────────┐     ┌───────────────┐
+         └─────────────→│ Keyword Match │ ──→ │ 混合排序引擎   │
+                        │ 关键词匹配     │     │ (加权融合)    │
+                        └───────────────┘     └───────────────┘
+                                                       │
+                                                       ▼
+                                              ┌───────────────┐
+                                              │ 检索结果返回   │
+                                              └───────────────┘
+```
 
-### 7.2 缓存机制
+### 7.2 新增组件
+
+| 组件 | 说明 |
+|------|------|
+| `EmbeddingService` | 调用 DashScope text-embedding-v3 模型将文本转换为 1024 维向量 |
+| `VectorStoreService` | 基于 SQLite 的向量存储和检索服务，支持余弦相似度计算 |
+| `RagController` | REST API 接口，提供搜索、向量化管理等功能 |
+
+### 7.3 混合搜索算法
+
+混合搜索将向量相似度和关键词匹配加权融合：
+
+```
+混合分数 = (向量权重 × 向量相似度) + ((1 - 向量权重) × 归一化关键词分数)
+```
+
+- **向量相似度**：使用余弦相似度计算，范围 0-1
+- **关键词分数**：基于标题、内容、标签的匹配程度
+- **默认权重**：向量占 70%，关键词占 30%（可通过配置调整）
+
+### 7.4 配置项
+
+在 `application.yml` 中可配置：
+
+```yaml
+app:
+  rag:
+    # 是否启用向量增强搜索（默认启用）
+    enable-vector-search: true
+    # 向量搜索在混合搜索中的权重 (0-1)
+    vector-weight: 0.7
+```
+
+### 7.5 API 接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/rag/search` | POST | 智能搜索（自动选择最佳检索方式） |
+| `/api/rag/search/vector` | POST | 仅使用向量搜索 |
+| `/api/rag/search/keyword` | POST | 仅使用关键词搜索 |
+| `/api/rag/chat` | POST | RAG 增强对话 |
+| `/api/rag/vector/status` | GET | 获取向量化状态 |
+| `/api/rag/vector/vectorize` | POST | 手动触向量化 |
+| `/api/rag/vector/weight` | POST | 设置向量搜索权重 |
+| `/api/rag/reload` | POST | 重新加载知识库 |
+
+### 7.6 向量化流程
+
+1. **应用启动时**：自动异步向量化所有知识库条目
+2. **知识库更新时**：调用 `/api/rag/reload` 重新加载并向量化
+3. **降级策略**：向量搜索失败时自动回退到关键词匹配
+
+### 7.7 缓存机制
+
+`EmbeddingService` 内置内存缓存，避免重复调用 API 生成向量：
 
 ```java
-// 添加缓存避免重复检索
-private final Map<String, List<KnowledgeItem>> cache = new ConcurrentHashMap<>();
-
-public List<KnowledgeItem> retrieveKnowledgeWithCache(String positionId, String query, int limit) {
-    String cacheKey = positionId + ":" + query;
-    return cache.computeIfAbsent(cacheKey, k -> {
-        List<KnowledgeItem> items = retrieveKnowledge(positionId, query, limit * 2);
-        return items.stream().limit(limit).toList();
-    });
-}
-```
-
-### 7.3 知识库向量化（未来扩展）
-
-```
-知识条目 → [Embedding 模型] → 向量表示 → [向量数据库]
-                                     ↓
-用户问题 → [Embedding 模型] → 向量表示 → [相似度检索]
+// Embedding 缓存：文本内容 -> 向量
+private final Map<String, float[]> embeddingCache = new ConcurrentHashMap<>();
 ```
 
 ## 八、与 LLM 服务集成

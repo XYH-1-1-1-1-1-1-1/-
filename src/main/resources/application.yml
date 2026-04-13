@@ -81,6 +81,14 @@ app:
     max-answer-length: 500
     # 历史面试记录保留数量
     max-history-records: 50
+  
+  # RAG 向量搜索配置
+  rag:
+    # 是否启用向量增强搜索（默认启用）
+    enable-vector-search: true
+    # 向量搜索在混合搜索中的权重 (0-1)，剩余权重用于关键词匹配
+    # 0.7 表示向量相似度占 70%，关键词匹配占 30%
+    vector-weight: 0.7
 
 # 日志配置
 logging:
