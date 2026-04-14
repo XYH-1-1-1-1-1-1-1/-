@@ -181,6 +181,30 @@ public class UserController {
     }
 
     /**
+     * 解析简历内容（提取PDF中的文本）
+     * 支持文本型PDF和图片型PDF（自动OCR识别）
+     */
+    @GetMapping("/{id}/resume/parse")
+    public ApiResponse<Map<String, Object>> parseResumeContent(@PathVariable Long id) {
+        try {
+            Resume resume = resumeService.getUserResume(id)
+                .orElseThrow(() -> new RuntimeException("未找到简历"));
+
+            String content = resumeService.parseResumeContent(resume.getId());
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("fileName", resume.getFileName());
+            result.put("content", content);
+            result.put("contentLength", content.length());
+
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            log.error("解析简历失败", e);
+            return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
      * 更新用户信息
      */
     @PutMapping("/{id}")

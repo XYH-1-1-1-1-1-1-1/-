@@ -60,7 +60,7 @@ app:
     # API 基础 URL（DashScope 兼容 OpenAI 格式）
     base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
     # 默认模型（通义千问 turbo 模型，免费额度充足）
-    model: qwen-turbo
+    model: qwen-max
     # 备选模型列表
     fallback-models:
       - qwen-plus
@@ -89,6 +89,17 @@ app:
     # 向量搜索在混合搜索中的权重 (0-1)，剩余权重用于关键词匹配
     # 0.7 表示向量相似度占 70%，关键词匹配占 30%
     vector-weight: 0.7
+  
+  # PDF解析器配置
+  pdf:
+    parser:
+      # Tesseract OCR 数据文件路径 (tessdata目录)
+      # 需要下载中文语言包 chi_sim.traineddata
+      # 下载地址：https://github.com/tesseract-ocr/tessdata
+      # Windows 用户可以将 tessdata 文件夹放在项目根目录或指定绝对路径
+      tessdata-path: ./tessdata
+      # OCR 识别语言：chi_sim=简体中文, eng=英文
+      ocr-lang: chi_sim+eng
 
 # 日志配置
 logging:

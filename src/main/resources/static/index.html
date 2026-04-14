@@ -210,45 +210,145 @@
         .interview-container {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
-            padding: 30px;
+            padding: 20px;
             margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 250px);
+            min-height: 500px;
         }
         
         .interview-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             flex-wrap: wrap;
             gap: 10px;
+            flex-shrink: 0;
         }
         
-        .question-box {
-            background: rgba(0,212,255,0.1);
-            border-left: 4px solid #00d4ff;
-            padding: 20px;
-            border-radius: 0 10px 10px 0;
-            margin-bottom: 20px;
+        /* 对话式聊天容器 */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
         
-        .question-box h4 {
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+        
+        /* 消息气泡基础样式 */
+        .message {
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.6;
+            font-size: 1em;
+            animation: messageSlide 0.3s ease-out;
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* AI消息样式（左侧） */
+        .message.ai {
+            align-self: flex-start;
+            background: rgba(0,212,255,0.15);
+            border: 1px solid rgba(0,212,255,0.3);
+            color: #fff;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.ai .message-header {
             color: #00d4ff;
-            margin-bottom: 10px;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .message.ai .message-content {
+            color: #e0e0e0;
+        }
+        
+        /* 用户消息样式（右侧） */
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, rgba(123,44,191,0.3), rgba(0,212,255,0.2));
+            border: 1px solid rgba(123,44,191,0.4);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.user .message-header {
+            color: #b388ff;
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            text-align: right;
+        }
+        
+        .message.user .message-content {
+            color: #f0f0f0;
+        }
+        
+        /* 系统消息样式（居中） */
+        .message.system {
+            align-self: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #888;
+            font-size: 0.9em;
+            padding: 10px 15px;
+            text-align: center;
+        }
+        
+        /* 输入区域 */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+            flex-wrap: wrap;
         }
         
         .answer-area {
-            width: 100%;
-            min-height: 150px;
-            padding: 15px;
+            flex: 1;
+            min-height: 60px;
+            max-height: 150px;
+            padding: 12px 15px;
             border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
+            border-radius: 20px;
             background: rgba(255,255,255,0.05);
             color: #fff;
             font-size: 1em;
-            resize: vertical;
-            margin-bottom: 15px;
+            resize: none;
         }
         
         .answer-area:focus {
@@ -265,6 +365,7 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            width: 100%;
         }
         
         .btn-secondary {
@@ -273,7 +374,26 @@
         
         .voice-btn {
             width: auto;
-            padding: 14px 30px;
+            padding: 12px 20px;
+            border-radius: 20px;
+        }
+        
+        .btn-submit {
+            padding: 12px 30px;
+            border-radius: 20px;
+        }
+        
+        .btn-skip {
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .btn-exit {
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-left: auto;
         }
         
         .voice-btn.recording {
@@ -299,6 +419,97 @@
         
         .mode-badge.real {
             background: rgba(123,44,191,0.3);
+        }
+        
+        /* 真实面试语音区域 */
+        .voice-answer-area {
+            background: rgba(123,44,191,0.1);
+            border-left: 4px solid #7b2cbf;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 15px;
+        }
+        
+        .voice-answer-area p {
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .voice-answer-text {
+            color: #fff;
+            font-size: 1em;
+            min-height: 80px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        
+        .voice-warning {
+            color: #ff9800;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        
+        /* 打字指示器 */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #00d4ff;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+        
+        /* 进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            transition: width 0.3s ease;
+        }
+        
+        /* 欢迎消息 */
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #aaa;
+        }
+        
+        .welcome-message h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
         }
         
         .report-container {
@@ -629,36 +840,46 @@
                 
                 <div id="interviewing" class="interview-container hidden">
                     <div class="interview-header">
-                        <span id="interviewPosition">岗位：后端开发工程师</span>
-                        <span id="interviewProgress">进度：1/10</span>
-                        <span id="interviewModeBadge" class="mode-badge practice">📝 练习模式</span>
-                    </div>
-                    
-                    <div class="question-box">
-                        <h4>问题 <span id="questionNum">1</span></h4>
-                        <p id="questionContent">请解释一下 HashMap 的实现原理...</p>
-                    </div>
-                    
-                    <!-- 真实面试模式：语音录制区域 -->
-                    <div id="realModeAnswerArea" class="hidden">
-                        <div class="voice-answer-area">
-                            <p>🎤 语音回答</p>
-                            <div id="voiceAnswerText" class="voice-answer-text">请点击"开始录音"进行语音回答...</div>
+                        <div>
+                            <span id="interviewPosition">岗位：后端开发工程师</span>
+                            <span id="interviewModeBadge" class="mode-badge practice" style="margin-left: 10px;">📝 练习模式</span>
                         </div>
-                        <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
+                        <span id="interviewProgress">进度：1/10</span>
                     </div>
                     
-                    <!-- 练习模式：可编辑的文本输入框 -->
-                    <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答..."></textarea>
+                    <!-- 进度条 -->
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 10%;"></div>
+                    </div>
                     
-                    <div class="interview-actions">
-                        <!-- 真实面试模式：语音按钮 -->
-                        <button class="btn voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
-                        <!-- 练习模式：语音辅助输入 -->
-                        <button class="btn voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
-                        <button class="btn btn-secondary" onclick="skipQuestion()">跳过</button>
-                        <button class="btn" id="submitBtn" onclick="submitAnswer()">提交回答</button>
-                        <button class="btn btn-secondary" onclick="exitInterview()" style="background: linear-gradient(90deg, #ff416c, #ff4b2b); margin-left: auto;">🚪 退出面试</button>
+                    <!-- 对话聊天区域 -->
+                    <div class="chat-container" id="chatContainer">
+                        <!-- 消息将在这里动态添加 -->
+                    </div>
+                    
+                    <!-- 输入区域 -->
+                    <div class="input-area">
+                        <!-- 真实面试模式：语音录制区域 -->
+                        <div id="realModeAnswerArea" class="hidden" style="width: 100%; margin-bottom: 10px;">
+                            <div class="voice-answer-area" style="margin-bottom: 10px;">
+                                <p>🎤 语音回答</p>
+                                <div id="voiceAnswerText" class="voice-answer-text">请点击"开始录音"进行语音回答...</div>
+                            </div>
+                            <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
+                        </div>
+                        
+                        <!-- 练习模式：可编辑的文本输入框 -->
+                        <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答...（Enter发送，Shift+Enter换行）"></textarea>
+                        
+                        <div class="interview-actions">
+                            <!-- 真实面试模式：语音按钮 -->
+                            <button class="btn voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
+                            <!-- 练习模式：语音辅助输入 -->
+                            <button class="btn voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
+                            <button class="btn btn-secondary btn-skip" onclick="skipQuestion()">⏭️ 跳过</button>
+                            <button class="btn btn-submit" id="submitBtn" onclick="submitAnswer()">发送 ➤</button>
+                            <button class="btn btn-exit btn-secondary" onclick="exitInterview()" style="background: linear-gradient(90deg, #ff416c, #ff4b2b);">🚪 退出</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -738,6 +959,17 @@
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
                 showMainSection();
+            }
+            
+            // 添加Enter发送快捷键
+            const answerInput = document.getElementById('answerInput');
+            if (answerInput) {
+                answerInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        submitAnswer();
+                    }
+                });
             }
         });
         
@@ -964,7 +1196,19 @@
                     const position = positions.find(p => p.code === positionCode);
                     document.getElementById('interviewPosition').textContent = '岗位：' + position.name;
                     setupInterviewMode(currentSession.interviewMode);
-                    loadQuestion();
+                    
+                    // 清空聊天容器并显示欢迎消息
+                    clearChat();
+                    addMessage('system', '🎉 面试已开始，祝你好运！');
+                    
+                    // 显示AI面试官欢迎消息
+                    setTimeout(() => {
+                        addMessage('ai', `你好！我是今天的AI面试官。很高兴能和你交流。我们将从专业问题开始面试，请认真回答每个问题。`, '🤖 AI面试官 · 开场白');
+                        // 加载第一个问题
+                        setTimeout(() => {
+                            loadQuestion();
+                        }, 1500);
+                    }, 500);
                 } else {
                     showToast(data.message, 'error');
                 }
@@ -1009,7 +1253,8 @@
             }
         }
         
-        function loadQuestion() {
+        // 获取岗位问题列表
+        function getPositionQuestions() {
             const questions = {
                 'backend': [
                     '请解释一下 HashMap 的实现原理，以及 JDK1.8 之后做了什么优化？',
@@ -1062,13 +1307,85 @@
             };
             
             const positionCode = currentSession.positionId;
-            const positionQuestions = questions[positionCode] || questions['backend'];
+            return questions[positionCode] || questions['backend'];
+        }
+        
+        // 添加消息到聊天容器
+        function addMessage(type, content, header) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
             
-            if (currentQuestionIndex < positionQuestions.length) {
-                document.getElementById('questionNum').textContent = currentQuestionIndex + 1;
-                document.getElementById('questionContent').textContent = positionQuestions[currentQuestionIndex];
+            let headerHtml = '';
+            if (header) {
+                headerHtml = `<div class="message-header">${header}</div>`;
+            }
+            
+            messageDiv.innerHTML = `
+                ${headerHtml}
+                <div class="message-content">${content}</div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            // 滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // 添加打字指示器
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message ai';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="message-header">🤖 AI面试官</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // 移除打字指示器
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+        
+        // 清空聊天容器
+        function clearChat() {
+            document.getElementById('chatContainer').innerHTML = '';
+        }
+        
+        function loadQuestion() {
+            const positionQuestions = getPositionQuestions();
+            const totalQuestions = positionQuestions.length;
+            
+            if (currentQuestionIndex < totalQuestions) {
+                // 更新进度
                 document.getElementById('interviewProgress').textContent = 
-                    `进度：${currentQuestionIndex + 1}/${positionQuestions.length}`;
+                    `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
+                document.getElementById('progressFill').style.width = 
+                    `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+                
+                // 显示打字指示器
+                showTypingIndicator();
+                
+                // 模拟AI思考延迟后显示问题
+                setTimeout(() => {
+                    hideTypingIndicator();
+                    const question = positionQuestions[currentQuestionIndex];
+                    addMessage('ai', question, `🤖 AI面试官 · 问题 ${currentQuestionIndex + 1}`);
+                }, 800);
             }
         }
         
@@ -1093,6 +1410,13 @@
                 }
             }
             
+            // 先显示用户的回答（用户消息气泡）
+            const answerLabel = answerType === 'voice' ? '🎤 语音回答' : '✍️ 文本回答';
+            addMessage('user', answer.replace(/\n/g, '<br>'), `${answerLabel} · 问题 ${currentQuestionIndex + 1}`);
+            
+            // 禁用输入区域
+            disableInput();
+            
             try {
                 const resp = await fetch(API_BASE + `/interview/${currentSession.id}/answer`, {
                     method: 'POST',
@@ -1111,7 +1435,6 @@
                         showReport(response.report);
                     } else {
                         currentQuestionIndex++;
-                        loadQuestion();
                         // 重置回答区域
                         if (currentSession.interviewMode === 'REAL') {
                             voiceAnswer = '';
@@ -1121,9 +1444,12 @@
                         } else {
                             document.getElementById('answerInput').value = '';
                         }
+                        enableInput();
+                        loadQuestion();
                         showToast('回答已提交', 'success');
                     }
                 } else {
+                    enableInput();
                     showToast(data.message, 'error');
                 }
             } catch (e) {
@@ -1131,19 +1457,27 @@
                 if (currentQuestionIndex >= 10) {
                     showReport(createMockReport());
                 } else {
-                    loadQuestion();
+                    // 重置回答区域
                     if (currentSession && currentSession.interviewMode === 'REAL') {
                         voiceAnswer = '';
                         document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
                     } else {
                         document.getElementById('answerInput').value = '';
                     }
+                    enableInput();
+                    loadQuestion();
                     showToast('回答已提交', 'success');
                 }
             }
         }
         
         async function skipQuestion() {
+            // 显示跳过的消息
+            addMessage('system', `⏭️ 已跳过问题 ${currentQuestionIndex + 1}`);
+            
+            // 禁用输入区域
+            disableInput();
+            
             try {
                 const resp = await fetch(API_BASE + `/interview/${currentSession.id}/skip`, {
                     method: 'POST',
@@ -1157,7 +1491,7 @@
                         showReport(response.report);
                     } else {
                         currentQuestionIndex++;
-                        loadQuestion();
+                        // 重置回答区域
                         if (currentSession.interviewMode === 'REAL') {
                             voiceAnswer = '';
                             document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
@@ -1166,9 +1500,12 @@
                         } else {
                             document.getElementById('answerInput').value = '';
                         }
+                        enableInput();
+                        loadQuestion();
                         showToast('已跳过此题', 'success');
                     }
                 } else {
+                    enableInput();
                     showToast(data.message || '跳过失败', 'error');
                 }
             } catch (e) {
@@ -1177,8 +1514,57 @@
                     showToast('跳过所有问题将获得最低分', 'error');
                     showReport(createMockReport(true));
                 } else {
+                    enableInput();
                     loadQuestion();
                 }
+            }
+        }
+        
+        // 禁用输入区域
+        function disableInput() {
+            const answerInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const skipBtn = document.querySelector('.btn-skip');
+            const voiceBtnPractice = document.getElementById('voiceBtnPractice');
+            const voiceBtnReal = document.getElementById('voiceBtnReal');
+            
+            answerInput.disabled = true;
+            answerInput.style.opacity = '0.5';
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            skipBtn.disabled = true;
+            skipBtn.style.opacity = '0.5';
+            if (voiceBtnPractice) {
+                voiceBtnPractice.disabled = true;
+                voiceBtnPractice.style.opacity = '0.5';
+            }
+            if (voiceBtnReal) {
+                voiceBtnReal.disabled = true;
+                voiceBtnReal.style.opacity = '0.5';
+            }
+        }
+        
+        // 启用输入区域
+        function enableInput() {
+            const answerInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const skipBtn = document.querySelector('.btn-skip');
+            const voiceBtnPractice = document.getElementById('voiceBtnPractice');
+            const voiceBtnReal = document.getElementById('voiceBtnReal');
+            
+            answerInput.disabled = false;
+            answerInput.style.opacity = '1';
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            skipBtn.disabled = false;
+            skipBtn.style.opacity = '1';
+            if (voiceBtnPractice) {
+                voiceBtnPractice.disabled = false;
+                voiceBtnPractice.style.opacity = '1';
+            }
+            if (voiceBtnReal) {
+                voiceBtnReal.disabled = false;
+                voiceBtnReal.style.opacity = '1';
             }
         }
 

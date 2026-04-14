@@ -26,6 +26,9 @@ public class ResumeService {
     @Autowired
     private ResumeRepository resumeRepository;
 
+    @Autowired
+    private PdfResumeParser pdfResumeParser;
+
     // 简历存储目录
     private static final String RESUME_UPLOAD_DIR = "data/resumes/";
 
@@ -111,5 +114,35 @@ public class ResumeService {
             }
             resumeRepository.delete(resume);
         }
+    }
+
+    /**
+     * 解析用户上传的简历内容
+     * 
+     * @param resumeId 简历ID
+     * @return 解析后的简历文本内容
+     */
+    public String parseResumeContent(Long resumeId) {
+        Optional<Resume> resumeOpt = resumeRepository.findById(resumeId);
+        if (resumeOpt.isEmpty()) {
+            throw new IllegalArgumentException("简历不存在: " + resumeId);
+        }
+
+        Resume resume = resumeOpt.get();
+        String filePath = resume.getFilePath();
+
+        return pdfResumeParser.parsePdfContent(filePath);
+    }
+
+    /**
+     * 获取并解析用户的简历内容
+     * 
+     * @param userId 用户ID
+     * @return 解析后的简历文本内容
+     */
+    public Optional<String> getUserResumeContent(Long userId) {
+        return getUserResume(userId).map(resume -> 
+            pdfResumeParser.parsePdfContent(resume.getFilePath())
+        );
     }
 }
