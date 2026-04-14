@@ -83,6 +83,36 @@ public class InterviewController {
     }
 
     /**
+     * 获取用户指定岗位的面试历史
+     */
+    @GetMapping("/history/{userId}/{positionCode}")
+    public UserController.ApiResponse<List<InterviewSession>> getHistoryByPosition(
+            @PathVariable Long userId,
+            @PathVariable String positionCode) {
+        try {
+            List<InterviewSession> sessions = interviewService.getUserSessionsByPosition(userId, positionCode);
+            return UserController.ApiResponse.success(sessions);
+        } catch (Exception e) {
+            log.error("获取岗位面试历史失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 获取用户所有岗位类型列表（用于历史记录的岗位筛选）
+     */
+    @GetMapping("/history/{userId}/positions")
+    public UserController.ApiResponse<List<Map<String, Object>>> getUserPositions(@PathVariable Long userId) {
+        try {
+            List<Map<String, Object>> positions = interviewService.getUserDistinctPositions(userId);
+            return UserController.ApiResponse.success(positions);
+        } catch (Exception e) {
+            log.error("获取用户岗位列表失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
      * 提交回答
      */
     @PostMapping("/{sessionId}/answer")

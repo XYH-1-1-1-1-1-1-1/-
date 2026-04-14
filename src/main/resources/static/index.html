@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 模拟面试与能力提升软件 - 锐捷网络</title>
+    <!-- 空白 favicon，避免浏览器请求 /favicon.ico 导致 404 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
     <style>
         * {
             margin: 0;
@@ -230,7 +232,6 @@
             flex-shrink: 0;
         }
         
-        /* 对话式聊天容器 */
         .chat-container {
             flex: 1;
             overflow-y: auto;
@@ -254,7 +255,6 @@
             border-radius: 3px;
         }
         
-        /* 消息气泡基础样式 */
         .message {
             max-width: 80%;
             padding: 15px 20px;
@@ -265,17 +265,10 @@
         }
         
         @keyframes messageSlide {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        /* AI消息样式（左侧） */
         .message.ai {
             align-self: flex-start;
             background: rgba(0,212,255,0.15);
@@ -297,7 +290,6 @@
             color: #e0e0e0;
         }
         
-        /* 用户消息样式（右侧） */
         .message.user {
             align-self: flex-end;
             background: linear-gradient(135deg, rgba(123,44,191,0.3), rgba(0,212,255,0.2));
@@ -317,7 +309,6 @@
             color: #f0f0f0;
         }
         
-        /* 系统消息样式（居中） */
         .message.system {
             align-self: center;
             background: rgba(255,255,255,0.05);
@@ -328,7 +319,6 @@
             text-align: center;
         }
         
-        /* 输入区域 */
         .input-area {
             display: flex;
             gap: 10px;
@@ -354,11 +344,6 @@
         .answer-area:focus {
             outline: none;
             border-color: #00d4ff;
-        }
-        
-        .answer-area.readonly {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
         
         .interview-actions {
@@ -421,7 +406,6 @@
             background: rgba(123,44,191,0.3);
         }
         
-        /* 真实面试语音区域 */
         .voice-answer-area {
             background: rgba(123,44,191,0.1);
             border-left: 4px solid #7b2cbf;
@@ -450,7 +434,6 @@
             margin-bottom: 15px;
         }
         
-        /* 打字指示器 */
         .typing-indicator {
             display: flex;
             gap: 4px;
@@ -465,26 +448,14 @@
             animation: typing 1.4s infinite;
         }
         
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
         
         @keyframes typing {
-            0%, 60%, 100% {
-                transform: translateY(0);
-                opacity: 0.7;
-            }
-            30% {
-                transform: translateY(-10px);
-                opacity: 1;
-            }
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+            30% { transform: translateY(-10px); opacity: 1; }
         }
         
-        /* 进度条 */
         .progress-bar {
             width: 100%;
             height: 4px;
@@ -498,18 +469,6 @@
             height: 100%;
             background: linear-gradient(90deg, #00d4ff, #7b2cbf);
             transition: width 0.3s ease;
-        }
-        
-        /* 欢迎消息 */
-        .welcome-message {
-            text-align: center;
-            padding: 40px 20px;
-            color: #aaa;
-        }
-        
-        .welcome-message h3 {
-            color: #00d4ff;
-            margin-bottom: 15px;
         }
         
         .report-container {
@@ -572,6 +531,7 @@
             border-bottom: none;
         }
         
+        /* 历史记录样式 */
         .history-list {
             display: flex;
             flex-direction: column;
@@ -650,6 +610,57 @@
             transform: scale(1.05);
         }
         
+        /* 历史记录岗位筛选 */
+        .history-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .history-filter-title {
+            color: #00d4ff;
+            font-size: 1.1em;
+            margin-right: 10px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            border-color: transparent;
+        }
+        
+        .back-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
         .toast {
             position: fixed;
             top: 20px;
@@ -686,7 +697,6 @@
             border-top: 1px solid rgba(255,255,255,0.1);
         }
         
-        /* 模式选择样式 */
         .mode-option {
             flex: 1;
             min-width: 250px;
@@ -712,33 +722,33 @@
             background: rgba(123,44,191,0.1);
         }
         
-        /* 真实面试语音区域 */
-        .voice-answer-area {
-            background: rgba(123,44,191,0.1);
-            border-left: 4px solid #7b2cbf;
-            padding: 20px;
-            border-radius: 0 10px 10px 0;
-            margin-bottom: 15px;
-        }
-        
-        .voice-answer-area p {
-            color: #aaa;
-            margin-bottom: 10px;
-        }
-        
-        .voice-answer-text {
-            color: #fff;
-            font-size: 1em;
-            min-height: 80px;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
+        .resume-status {
+            padding: 15px;
+            background: rgba(0,212,255,0.1);
             border-radius: 8px;
+            margin-top: 15px;
         }
         
-        .voice-warning {
-            color: #ff9800;
+        .resume-status p {
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+        
+        .resume-status .file-info {
+            color: #aaa;
             font-size: 0.9em;
-            margin-bottom: 15px;
+        }
+        
+        .resume-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .resume-actions .btn {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -847,19 +857,13 @@
                         <span id="interviewProgress">进度：1/10</span>
                     </div>
                     
-                    <!-- 进度条 -->
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill" style="width: 10%;"></div>
                     </div>
                     
-                    <!-- 对话聊天区域 -->
-                    <div class="chat-container" id="chatContainer">
-                        <!-- 消息将在这里动态添加 -->
-                    </div>
+                    <div class="chat-container" id="chatContainer"></div>
                     
-                    <!-- 输入区域 -->
                     <div class="input-area">
-                        <!-- 真实面试模式：语音录制区域 -->
                         <div id="realModeAnswerArea" class="hidden" style="width: 100%; margin-bottom: 10px;">
                             <div class="voice-answer-area" style="margin-bottom: 10px;">
                                 <p>🎤 语音回答</p>
@@ -868,13 +872,10 @@
                             <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
                         </div>
                         
-                        <!-- 练习模式：可编辑的文本输入框 -->
                         <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答...（Enter发送，Shift+Enter换行）"></textarea>
                         
                         <div class="interview-actions">
-                            <!-- 真实面试模式：语音按钮 -->
                             <button class="btn voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
-                            <!-- 练习模式：语音辅助输入 -->
                             <button class="btn voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
                             <button class="btn btn-secondary btn-skip" onclick="skipQuestion()">⏭️ 跳过</button>
                             <button class="btn btn-submit" id="submitBtn" onclick="submitAnswer()">发送 ➤</button>
@@ -905,7 +906,19 @@
             <!-- 历史记录 -->
             <div id="historyTab" class="tab-content">
                 <h2>面试历史</h2>
-                <div class="history-list" id="historyList"></div>
+                
+                <!-- 历史记录主页：全部记录 -->
+                <div id="historyAllView">
+                    <div class="history-filter" id="positionFilter"></div>
+                    <div class="history-list" id="historyList"></div>
+                </div>
+                
+                <!-- 按岗位筛选的记录 -->
+                <div id="historyPositionView" class="hidden">
+                    <button class="back-btn" onclick="showHistoryAll()">← 返回全部记录</button>
+                    <h3 id="historyPositionTitle" style="color: #00d4ff; margin-bottom: 20px;"></h3>
+                    <div class="history-list" id="historyPositionList"></div>
+                </div>
             </div>
             
             <!-- 个人中心 -->
@@ -935,6 +948,28 @@
                     <button class="btn" onclick="saveProfile()">保存修改</button>
                     <button class="btn btn-secondary" onclick="logout()" style="margin-top: 10px;">退出登录</button>
                 </div>
+
+                <h2 style="margin-top: 30px;">个人简历</h2>
+                <div class="interview-container">
+                    <div class="form-group">
+                        <label>上传简历（仅支持 PDF 格式，每次只能保留一份）</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="resumeFile" accept=".pdf" style="flex: 1; color: #fff;">
+                            <button class="btn" onclick="uploadResume()" style="width: auto; padding: 12px 30px;">上传/更新简历</button>
+                        </div>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 8px;">提示：上传新简历将自动覆盖原有简历</p>
+                    </div>
+                    <div id="resumeInfo" class="hidden">
+                        <div class="resume-status">
+                            <p>📄 当前简历</p>
+                            <p class="file-info" id="resumeFileName"></p>
+                            <div class="resume-actions">
+                                <button class="btn btn-secondary" onclick="viewResume()">查看</button>
+                                <button class="btn btn-secondary" style="background: linear-gradient(90deg, #ff416c, #ff4b2b);" onclick="deleteResume()">🗑️ 删除</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -953,6 +988,7 @@
         let currentMode = 'PRACTICE';
         let realVoiceRecognition = null;
         let voiceAnswer = '';
+        let currentHistoryPosition = null; // 当前历史记录筛选的岗位
         
         document.addEventListener('DOMContentLoaded', function() {
             const savedUser = localStorage.getItem('currentUser');
@@ -961,7 +997,6 @@
                 showMainSection();
             }
             
-            // 添加Enter发送快捷键
             const answerInput = document.getElementById('answerInput');
             if (answerInput) {
                 answerInput.addEventListener('keydown', function(e) {
@@ -1053,6 +1088,81 @@
             document.getElementById('profileUniversity').value = currentUser.university || '';
             document.getElementById('profileTarget').value = currentUser.targetPosition || '';
             await checkInProgressInterview();
+            await loadResumeInfo();
+        }
+
+        async function loadResumeInfo() {
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`);
+                const data = await resp.json();
+                if (data.code === 200 && data.data) {
+                    document.getElementById('resumeInfo').classList.remove('hidden');
+                    document.getElementById('resumeFileName').textContent = data.data.fileName;
+                } else {
+                    document.getElementById('resumeInfo').classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('加载简历信息失败', e);
+            }
+        }
+
+        async function uploadResume() {
+            const fileInput = document.getElementById('resumeFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                showToast('请选择要上传的简历文件', 'error');
+                return;
+            }
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('请上传 PDF 格式的文件', 'error');
+                return;
+            }
+            if (file.size > 20 * 1024 * 1024) {
+                showToast('简历文件大小不能超过 20MB', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+                if (data.code === 200) {
+                    showToast('简历上传成功（已自动覆盖原有简历）', 'success');
+                    fileInput.value = '';
+                    await loadResumeInfo();
+                } else {
+                    showToast(data.message || '上传失败', 'error');
+                }
+            } catch (e) {
+                showToast('上传失败：' + e.message, 'error');
+            }
+        }
+
+        async function viewResume() {
+            window.open(API_BASE + `/user/${currentUser.id}/resume/view`, '_blank');
+        }
+
+        async function deleteResume() {
+            if (!confirm('确定要删除简历吗？删除后将无法恢复。')) return;
+            try {
+                const resp = await fetch(API_BASE + `/user/${currentUser.id}/resume`, {
+                    method: 'DELETE'
+                });
+                const data = await resp.json();
+                if (data.code === 200) {
+                    showToast('简历已删除', 'success');
+                    await loadResumeInfo();
+                } else {
+                    showToast(data.message || '删除失败', 'error');
+                }
+            } catch (e) {
+                showToast('删除失败：' + e.message, 'error');
+            }
         }
 
         async function checkInProgressInterview() {
@@ -1197,14 +1307,11 @@
                     document.getElementById('interviewPosition').textContent = '岗位：' + position.name;
                     setupInterviewMode(currentSession.interviewMode);
                     
-                    // 清空聊天容器并显示欢迎消息
                     clearChat();
                     addMessage('system', '🎉 面试已开始，祝你好运！');
                     
-                    // 显示AI面试官欢迎消息
                     setTimeout(() => {
                         addMessage('ai', `你好！我是今天的AI面试官。很高兴能和你交流。我们将从专业问题开始面试，请认真回答每个问题。`, '🤖 AI面试官 · 开场白');
-                        // 加载第一个问题
                         setTimeout(() => {
                             loadQuestion();
                         }, 1500);
@@ -1253,7 +1360,6 @@
             }
         }
         
-        // 获取岗位问题列表
         function getPositionQuestions() {
             const questions = {
                 'backend': [
@@ -1310,7 +1416,6 @@
             return questions[positionCode] || questions['backend'];
         }
         
-        // 添加消息到聊天容器
         function addMessage(type, content, header) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
@@ -1327,13 +1432,11 @@
             `;
             
             chatContainer.appendChild(messageDiv);
-            // 滚动到底部
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
             return messageDiv;
         }
         
-        // 添加打字指示器
         function showTypingIndicator() {
             const chatContainer = document.getElementById('chatContainer');
             const typingDiv = document.createElement('div');
@@ -1353,7 +1456,6 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
-        // 移除打字指示器
         function hideTypingIndicator() {
             const indicator = document.getElementById('typingIndicator');
             if (indicator) {
@@ -1361,7 +1463,6 @@
             }
         }
         
-        // 清空聊天容器
         function clearChat() {
             document.getElementById('chatContainer').innerHTML = '';
         }
@@ -1371,20 +1472,22 @@
             const totalQuestions = positionQuestions.length;
             
             if (currentQuestionIndex < totalQuestions) {
-                // 更新进度
                 document.getElementById('interviewProgress').textContent = 
                     `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
                 document.getElementById('progressFill').style.width = 
                     `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
                 
-                // 显示打字指示器
+                // 问题加载期间禁用跳过按钮，防止问题未显示完就跳过
+                disableSkipButton();
+                
                 showTypingIndicator();
                 
-                // 模拟AI思考延迟后显示问题
                 setTimeout(() => {
                     hideTypingIndicator();
                     const question = positionQuestions[currentQuestionIndex];
-                    addMessage('ai', question, `🤖 AI面试官 · 问题 ${currentQuestionIndex + 1}`);
+                    addMessage('ai', question, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
+                    // 问题完全显示后才启用跳过按钮
+                    enableSkipButton();
                 }, 800);
             }
         }
@@ -1394,7 +1497,6 @@
             let answerType = 'text';
             
             if (currentSession && currentSession.interviewMode === 'REAL') {
-                // 真实面试模式：使用语音回答
                 answer = voiceAnswer.trim();
                 answerType = 'voice';
                 if (!answer) {
@@ -1402,7 +1504,6 @@
                     return;
                 }
             } else {
-                // 练习模式：使用文本输入
                 answer = document.getElementById('answerInput').value.trim();
                 if (!answer) {
                     showToast('请输入回答内容', 'error');
@@ -1410,11 +1511,9 @@
                 }
             }
             
-            // 先显示用户的回答（用户消息气泡）
             const answerLabel = answerType === 'voice' ? '🎤 语音回答' : '✍️ 文本回答';
             addMessage('user', answer.replace(/\n/g, '<br>'), `${answerLabel} · 问题 ${currentQuestionIndex + 1}`);
             
-            // 禁用输入区域
             disableInput();
             
             try {
@@ -1435,7 +1534,6 @@
                         showReport(response.report);
                     } else {
                         currentQuestionIndex++;
-                        // 重置回答区域
                         if (currentSession.interviewMode === 'REAL') {
                             voiceAnswer = '';
                             document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
@@ -1457,7 +1555,6 @@
                 if (currentQuestionIndex >= 10) {
                     showReport(createMockReport());
                 } else {
-                    // 重置回答区域
                     if (currentSession && currentSession.interviewMode === 'REAL') {
                         voiceAnswer = '';
                         document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
@@ -1472,10 +1569,8 @@
         }
         
         async function skipQuestion() {
-            // 显示跳过的消息
             addMessage('system', `⏭️ 已跳过问题 ${currentQuestionIndex + 1}`);
             
-            // 禁用输入区域
             disableInput();
             
             try {
@@ -1491,7 +1586,6 @@
                         showReport(response.report);
                     } else {
                         currentQuestionIndex++;
-                        // 重置回答区域
                         if (currentSession.interviewMode === 'REAL') {
                             voiceAnswer = '';
                             document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
@@ -1520,7 +1614,6 @@
             }
         }
         
-        // 禁用输入区域
         function disableInput() {
             const answerInput = document.getElementById('answerInput');
             const submitBtn = document.getElementById('submitBtn');
@@ -1534,17 +1627,10 @@
             submitBtn.style.opacity = '0.5';
             skipBtn.disabled = true;
             skipBtn.style.opacity = '0.5';
-            if (voiceBtnPractice) {
-                voiceBtnPractice.disabled = true;
-                voiceBtnPractice.style.opacity = '0.5';
-            }
-            if (voiceBtnReal) {
-                voiceBtnReal.disabled = true;
-                voiceBtnReal.style.opacity = '0.5';
-            }
+            if (voiceBtnPractice) { voiceBtnPractice.disabled = true; voiceBtnPractice.style.opacity = '0.5'; }
+            if (voiceBtnReal) { voiceBtnReal.disabled = true; voiceBtnReal.style.opacity = '0.5'; }
         }
         
-        // 启用输入区域
         function enableInput() {
             const answerInput = document.getElementById('answerInput');
             const submitBtn = document.getElementById('submitBtn');
@@ -1558,20 +1644,29 @@
             submitBtn.style.opacity = '1';
             skipBtn.disabled = false;
             skipBtn.style.opacity = '1';
-            if (voiceBtnPractice) {
-                voiceBtnPractice.disabled = false;
-                voiceBtnPractice.style.opacity = '1';
+            if (voiceBtnPractice) { voiceBtnPractice.disabled = false; voiceBtnPractice.style.opacity = '1'; }
+            if (voiceBtnReal) { voiceBtnReal.disabled = false; voiceBtnReal.style.opacity = '1'; }
+        }
+        
+        // 单独控制跳过按钮的禁用/启用状态
+        function disableSkipButton() {
+            const skipBtn = document.querySelector('.btn-skip');
+            if (skipBtn) {
+                skipBtn.disabled = true;
+                skipBtn.style.opacity = '0.5';
             }
-            if (voiceBtnReal) {
-                voiceBtnReal.disabled = false;
-                voiceBtnReal.style.opacity = '1';
+        }
+        
+        function enableSkipButton() {
+            const skipBtn = document.querySelector('.btn-skip');
+            if (skipBtn) {
+                skipBtn.disabled = false;
+                skipBtn.style.opacity = '1';
             }
         }
 
         async function exitInterview() {
-            if (!confirm('确定要退出面试吗？退出后将不会保存任何面试记录。')) {
-                return;
-            }
+            if (!confirm('确定要退出面试吗？退出后将不会保存任何面试记录。')) return;
             if (!currentSession || !currentSession.id) {
                 currentSession = null;
                 document.getElementById('interviewing').classList.add('hidden');
@@ -1678,50 +1773,185 @@
             };
         }
         
+        // 加载历史记录（全部记录）
         async function loadHistory() {
+            currentHistoryPosition = null;
+            document.getElementById('historyAllView').classList.remove('hidden');
+            document.getElementById('historyPositionView').classList.add('hidden');
+            
+            // 加载岗位筛选按钮
+            await loadPositionFilter();
+            
+            // 加载全部历史记录
+            await loadAllHistory();
+        }
+        
+        // 加载岗位筛选器
+        async function loadPositionFilter() {
+            try {
+                const resp = await fetch(API_BASE + `/interview/history/${currentUser.id}/positions`);
+                const data = await resp.json();
+                
+                const filterContainer = document.getElementById('positionFilter');
+                
+                if (data.code === 200 && data.data && data.data.length > 0) {
+                    let html = '<span class="history-filter-title">按岗位筛选：</span>';
+                    html += `<button class="filter-btn active" onclick="showHistoryAll()">全部</button>`;
+                    
+                    data.data.forEach(pos => {
+                        html += `<button class="filter-btn" onclick="showHistoryByPosition('${pos.code}')">${getPositionName(pos.code)} (${pos.count})</button>`;
+                    });
+                    
+                    filterContainer.innerHTML = html;
+                } else {
+                    filterContainer.innerHTML = '';
+                }
+            } catch (e) {
+                console.error('加载岗位筛选器失败', e);
+                document.getElementById('positionFilter').innerHTML = '';
+            }
+        }
+        
+        // 加载全部历史记录
+        async function loadAllHistory() {
             const historyList = document.getElementById('historyList');
             try {
                 const sessionResp = await fetch(API_BASE + `/interview/history/${currentUser.id}`);
                 const sessionData = await sessionResp.json();
                 
                 if (sessionData.code === 200 && sessionData.data && sessionData.data.length > 0) {
-                    const sessions = sessionData.data;
-                    historyList.innerHTML = sessions.map(session => {
-                        const date = session.startTime ? new Date(session.startTime).toLocaleString('zh-CN') : '未知时间';
-                        const status = session.status === 'COMPLETED' ? '已完成' : '进行中';
-                        const answered = session.answeredQuestions || 0;
-                        const total = session.totalQuestions || 10;
-                        const skipped = session.skippedQuestions || 0;
-                        const scoreText = session.status === 'COMPLETED' ? '加载中...' : '进行中';
-                        const mode = session.interviewMode || 'PRACTICE';
-                        const modeLabel = mode === 'REAL' ? '🎤 真实' : '📝 练习';
-                        const modeClass = mode === 'REAL' ? 'real' : 'practice';
-                        
-                        return `
-                            <div class="history-item">
-                                <div class="history-info" onclick="viewSessionReport(${session.id})" style="cursor: pointer; flex: 1;">
-                                    <h4>${getPositionName(session.positionId)} - ${status}<span class="history-mode ${modeClass}">${modeLabel}</span></h4>
-                                    <p>时间：${date} | 进度：${answered}/${total} | 跳过：${skipped}</p>
-                                </div>
-                                <div class="history-actions">
-                                    <div class="history-score" id="score_${session.id}">${scoreText}</div>
-                                    ${session.status !== 'IN_PROGRESS' ? `<button class="btn-delete" onclick="deleteInterviewSession(${session.id}, event)">🗑️ 删除</button>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    sessions.forEach(session => {
-                        if (session.status === 'COMPLETED') {
-                            loadSessionScore(session.id);
-                        }
-                    });
+                    await renderHistoryList(sessionData.data, 'historyList');
                 } else {
                     historyList.innerHTML = '<p style="color: #888; text-align: center;">暂无面试记录</p>';
                 }
             } catch (e) {
                 console.error('加载历史失败', e);
                 historyList.innerHTML = '<p style="color: #888; text-align: center;">加载失败，请重试</p>';
+            }
+        }
+        
+        // 显示按岗位筛选的历史记录
+        async function showHistoryByPosition(positionCode) {
+            currentHistoryPosition = positionCode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 显示岗位视图
+            document.getElementById('historyAllView').classList.add('hidden');
+            document.getElementById('historyPositionView').classList.remove('hidden');
+            document.getElementById('historyPositionTitle').textContent = getPositionName(positionCode) + ' - 面试记录';
+            
+            try {
+                const resp = await fetch(API_BASE + `/interview/history/${currentUser.id}/${positionCode}`);
+                const data = await resp.json();
+                
+                if (data.code === 200 && data.data && data.data.length > 0) {
+                    await renderHistoryList(data.data, 'historyPositionList');
+                } else {
+                    document.getElementById('historyPositionList').innerHTML = '<p style="color: #888; text-align: center;">暂无该岗位的面试记录</p>';
+                }
+            } catch (e) {
+                console.error('加载岗位历史记录失败', e);
+                document.getElementById('historyPositionList').innerHTML = '<p style="color: #888; text-align: center;">加载失败，请重试</p>';
+            }
+        }
+        
+        // 返回全部记录
+        function showHistoryAll() {
+            currentHistoryPosition = null;
+            document.getElementById('historyAllView').classList.remove('hidden');
+            document.getElementById('historyPositionView').classList.add('hidden');
+            
+            // 更新按钮状态
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.filter-btn').classList.add('active');
+            
+            loadAllHistory();
+        }
+        
+        // 渲染历史记录列表
+        async function renderHistoryList(sessions, containerId) {
+            const container = document.getElementById(containerId);
+            
+            // 先为所有已完成的会话获取分数
+            const scoreMap = {};
+            await Promise.all(sessions.map(async session => {
+                const isCompleted = session.status && (session.status.toUpperCase() === 'COMPLETED' || session.status.toUpperCase() === 'FINISHED');
+                if (isCompleted || (session.answeredQuestions >= session.totalQuestions && session.totalQuestions > 0)) {
+                    try {
+                        const resp = await fetch(API_BASE + `/interview/${session.id}/report`);
+                        const data = await resp.json();
+                        if (data.code === 200 && data.data) {
+                            const score = data.data.overallScore || 0;
+                            scoreMap[session.id] = score + '分';
+                        } else {
+                            scoreMap[session.id] = '无评分';
+                        }
+                    } catch (e) {
+                        scoreMap[session.id] = '加载失败';
+                    }
+                }
+            }));
+            
+            // 渲染历史记录
+            container.innerHTML = sessions.map(session => {
+                const date = session.startTime ? new Date(session.startTime).toLocaleString('zh-CN') : '未知时间';
+                // 使用宽松的状态比较，支持多种状态值
+                const isCompleted = session.status && (session.status.toUpperCase() === 'COMPLETED' || session.status.toUpperCase() === 'FINISHED');
+                const status = isCompleted ? '已完成' : '进行中';
+                const answered = session.answeredQuestions || 0;
+                const total = session.totalQuestions || 10;
+                const skipped = session.skippedQuestions || 0;
+                // isCompleted为真时显示分数，为假时显示"进行中"
+                const scoreText = scoreMap[session.id] !== undefined ? scoreMap[session.id] : '进行中';
+                const mode = session.interviewMode || 'PRACTICE';
+                const modeLabel = mode === 'REAL' ? '🎤 真实' : '📝 练习';
+                const modeClass = mode === 'REAL' ? 'real' : 'practice';
+                
+                // 计算面试持续时间（从数据库读取 durationSeconds）
+                const durationText = session.durationSeconds ? formatDuration(session.durationSeconds) : '';
+                
+                // 根据分数设置颜色
+                const score = scoreMap[session.id];
+                let scoreColor = '#00d4ff';
+                if (score && typeof score === 'string') {
+                    const numScore = parseInt(score);
+                    if (numScore >= 80) scoreColor = '#00d4ff';
+                    else if (numScore >= 60) scoreColor = '#ffa500';
+                    else scoreColor = '#ff4b2b';
+                }
+                
+                return `
+                    <div class="history-item" data-session-id="${session.id}">
+                        <div class="history-info" onclick="viewSessionReport(${session.id})" style="cursor: pointer; flex: 1;">
+                            <h4>${getPositionName(session.positionId)}<span class="history-mode ${modeClass}">${modeLabel}</span> · <span style="color: ${isCompleted ? '#4caf50' : '#ff9800'}">${status}</span></h4>
+                            <p>📅 ${date}</p>
+                            <p>📊 进度：${answered}/${total} | ⏭️ 跳过：${skipped}${durationText ? ' | ⏱️ 时长：' + durationText : ''}</p>
+                        </div>
+                        <div class="history-actions">
+                            <div class="history-score" id="score_${session.id}" style="color: ${scoreColor}">${scoreText}</div>
+                            ${session.status !== 'IN_PROGRESS' ? `<button class="btn-delete" onclick="deleteInterviewSession(${session.id}, event)">🗑️ 删除</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 格式化持续时间（秒）为可读格式
+        function formatDuration(seconds) {
+            if (!seconds || seconds <= 0) return '';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}小时${minutes}分钟`;
+            } else if (minutes > 0) {
+                return `${minutes}分钟${secs > 0 ? secs + '秒' : ''}`;
+            } else {
+                return `${secs}秒`;
             }
         }
         
@@ -1733,7 +1963,13 @@
                 const data = await resp.json();
                 if (data.code === 200) {
                     showToast('面试记录已删除', 'success');
-                    await loadHistory();
+                    // 重新加载当前视图
+                    if (currentHistoryPosition) {
+                        showHistoryByPosition(currentHistoryPosition);
+                    } else {
+                        loadAllHistory();
+                    }
+                    loadPositionFilter();
                 } else {
                     showToast(data.message || '删除失败', 'error');
                 }
@@ -1753,23 +1989,39 @@
         }
         
         async function loadSessionScore(sessionId) {
+            console.log('[loadSessionScore] 开始加载分数，sessionId:', sessionId);
             try {
                 const resp = await fetch(API_BASE + `/interview/${sessionId}/report`);
+                console.log('[loadSessionScore] 请求URL:', API_BASE + `/interview/${sessionId}/report`);
+                console.log('[loadSessionScore] API响应状态:', resp.status);
                 const data = await resp.json();
+                console.log('[loadSessionScore] API返回数据:', data);
+                
+                // 查找DOM元素
+                const scoreEl = document.getElementById(`score_${sessionId}`);
+                console.log('[loadSessionScore] DOM元素是否存在:', !!scoreEl);
+                
                 if (data.code === 200 && data.data) {
                     const score = data.data.overallScore || 0;
-                    const scoreEl = document.getElementById(`score_${sessionId}`);
                     if (scoreEl) {
                         scoreEl.textContent = score + '分';
                         if (score >= 80) scoreEl.style.color = '#00d4ff';
                         else if (score >= 60) scoreEl.style.color = '#ffa500';
                         else scoreEl.style.color = '#ff4b2b';
+                        console.log('[loadSessionScore] 分数加载成功:', score + '分');
+                    } else {
+                        console.error('[loadSessionScore] 找不到DOM元素 score_' + sessionId);
                     }
                 } else {
-                    document.getElementById(`score_${sessionId}`).textContent = '无评分';
+                    if (scoreEl) {
+                        scoreEl.textContent = '无评分';
+                        console.log('[loadSessionScore] 无评分数据');
+                    }
                 }
             } catch (e) {
-                document.getElementById(`score_${sessionId}`).textContent = '加载失败';
+                console.error('[loadSessionScore] 加载分数异常:', e);
+                const scoreEl = document.getElementById(`score_${sessionId}`);
+                if (scoreEl) scoreEl.textContent = '加载失败';
             }
         }
         
@@ -1813,7 +2065,6 @@
             }
         }
         
-        // 真实面试模式的语音输入
         function toggleVoiceReal() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 showToast('您的浏览器不支持语音输入', 'error');
@@ -1869,7 +2120,6 @@
             }
         }
 
-        // 练习模式的语音输入
         function toggleVoice() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 showToast('您的浏览器不支持语音输入', 'error');

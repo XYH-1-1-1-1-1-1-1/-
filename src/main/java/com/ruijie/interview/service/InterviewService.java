@@ -88,6 +88,36 @@ public class InterviewService {
     }
 
     /**
+     * 获取用户指定岗位的面试会话
+     */
+    public List<InterviewSession> getUserSessionsByPosition(Long userId, String positionCode) {
+        return sessionRepository.findByUserIdAndPositionIdOrderByCreatedAtDesc(userId, positionCode);
+    }
+
+    /**
+     * 获取用户所有不同的岗位类型（用于历史记录筛选）
+     */
+    public List<Map<String, Object>> getUserDistinctPositions(Long userId) {
+        List<InterviewSession> sessions = sessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        Map<String, Integer> positionCount = new HashMap<>();
+        
+        for (InterviewSession session : sessions) {
+            String posId = session.getPositionId();
+            positionCount.put(posId, positionCount.getOrDefault(posId, 0) + 1);
+        }
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : positionCount.entrySet()) {
+            Map<String, Object> pos = new HashMap<>();
+            pos.put("code", entry.getKey());
+            pos.put("count", entry.getValue());
+            result.add(pos);
+        }
+        
+        return result;
+    }
+
+    /**
      * 获取用户进行中的面试会话
      */
     public Optional<InterviewSession> getInProgressSession(Long userId) {
@@ -463,7 +493,8 @@ public class InterviewService {
     }
 
     /**
-     * 基于各题平均分生成评估报告
+     * 基于各题平均分和大模型分析生成评估报告
+     * 评分基于各题平均分，三个反馈板块（亮点分析、待改进之处、改进建议）基于完整对话历史由大模型生成
      */
     @Transactional
     public EvaluationReport generateEvaluationReportFromScores(InterviewSession session) {
@@ -484,10 +515,6 @@ public class InterviewService {
         int answeredCount = 0;
         int skippedCount = 0;
         
-        StringBuilder strengthsBuilder = new StringBuilder();
-        StringBuilder weaknessesBuilder = new StringBuilder();
-        StringBuilder suggestionsBuilder = new StringBuilder();
-        
         for (Answer answer : answers) {
             if (answer.getIsSkipped() != null && answer.getIsSkipped()) {
                 skippedCount++;
@@ -501,18 +528,6 @@ public class InterviewService {
                 totalKnowledge += answer.getKnowledgeDepth() != null ? answer.getKnowledgeDepth() : 10;
                 totalOverall += answer.getOverallScore();
                 answeredCount++;
-                
-                // 收集评价
-                if (answer.getEvaluationComment() != null && !answer.getEvaluationComment().isEmpty()) {
-                    // 高分作为亮点
-                    if (answer.getOverallScore() >= 70) {
-                        strengthsBuilder.append("第").append(answer.getQuestionId())
-                            .append("题：").append(answer.getEvaluationComment()).append(" ");
-                    } else {
-                        weaknessesBuilder.append("第").append(answer.getQuestionId())
-                            .append("题：").append(answer.getEvaluationComment()).append(" ");
-                    }
-                }
             }
         }
         
@@ -527,16 +542,53 @@ public class InterviewService {
         int skipPenalty = skippedCount * 2;
         avgOverall = Math.max(10, avgOverall - skipPenalty);
         
-        // 生成建议
-        if (skippedCount > 0) {
-            suggestionsBuilder.append("面试中跳过了").append(skippedCount)
-                .append("道题目，建议勇敢尝试回答。");
-        }
-        if (avgTechnical < 50) {
-            suggestionsBuilder.append("建议加强基础知识学习。");
-        }
-        if (avgOverall >= 70) {
-            suggestionsBuilder.append("整体表现良好，继续保持。");
+        // 使用大模型基于完整对话历史生成三个反馈板块
+        String strengths = "候选人完成了面试";
+        String weaknesses = "部分问题可以回答得更深入";
+        String suggestions = "建议继续学习和实践";
+        String recommendedResources = "推荐学习相关技术文档和开源项目";
+        
+        try {
+            Position position = positionService.findByCode(session.getPositionId()).orElse(null);
+            String positionName = position != null ? position.getName() : "技术岗位";
+            
+            log.info("[大模型评估报告] 开始生成评估报告 - 会话 ID: {}, 岗位：{}", session.getId(), positionName);
+            
+            // 调用大模型生成综合评估报告
+            String evalJson = llmService.generateEvaluationReport(
+                session.getConversationHistory(), 
+                positionName
+            );
+            
+            log.info("[大模型评估报告] LLM 返回结果：{}", evalJson);
+            
+            // 解析评估结果
+            JSONObject evalData = parseEvaluationJson(evalJson);
+            
+            strengths = evalData.getString("strengths");
+            weaknesses = evalData.getString("weaknesses");
+            suggestions = evalData.getString("suggestions");
+            recommendedResources = evalData.getString("recommendedResources");
+            
+            if (strengths == null || strengths.isEmpty()) {
+                strengths = "候选人完成了面试";
+            }
+            if (weaknesses == null || weaknesses.isEmpty()) {
+                weaknesses = "部分问题可以回答得更深入";
+            }
+            if (suggestions == null || suggestions.isEmpty()) {
+                suggestions = "建议继续学习和实践";
+            }
+            if (recommendedResources == null || recommendedResources.isEmpty()) {
+                recommendedResources = "推荐学习相关技术文档和开源项目";
+            }
+            
+            log.info("[大模型评估报告] 解析成功 - strengths: {}, weaknesses: {}", 
+                strengths.length() > 50 ? strengths.substring(0, 50) + "..." : strengths,
+                weaknesses.length() > 50 ? weaknesses.substring(0, 50) + "..." : weaknesses);
+                
+        } catch (Exception e) {
+            log.error("[大模型评估报告] 生成失败，使用默认反馈文本", e);
         }
         
         // 创建评估报告
@@ -550,10 +602,10 @@ public class InterviewService {
         report.setAdaptabilityScore(avgKnowledge); // 用知识深度作为应变能力
         report.setMatchingScore(avgOverall); // 用平均分作为匹配度
         report.setOverallScore(avgOverall);
-        report.setStrengths(strengthsBuilder.length() > 0 ? strengthsBuilder.toString() : "候选人完成了面试");
-        report.setWeaknesses(weaknessesBuilder.length() > 0 ? weaknessesBuilder.toString() : "部分问题可以回答得更深入");
-        report.setSuggestions(suggestionsBuilder.length() > 0 ? suggestionsBuilder.toString() : "建议继续学习和实践");
-        report.setRecommendedResources("推荐学习相关技术文档和开源项目");
+        report.setStrengths(strengths);
+        report.setWeaknesses(weaknesses);
+        report.setSuggestions(suggestions);
+        report.setRecommendedResources(recommendedResources);
         report.setSpeechRate("NORMAL");
         report.setClarity("GOOD");
         report.setConfidence("NORMAL");

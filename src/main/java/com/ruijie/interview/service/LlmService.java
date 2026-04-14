@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +152,80 @@ public class LlmService {
     }
 
     /**
+     * 简单对话接口（可指定 max_tokens）
+     *
+     * @param prompt 提示词
+     * @param systemPrompt 系统提示
+     * @param maxTokens 最大生成 token 数
+     * @return AI 响应
+     */
+    public String chatWithMaxTokens(String prompt, String systemPrompt, int maxTokens) {
+        List<Map<String, String>> messages = new ArrayList<>();
+
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+        }
+
+        messages.add(Map.of("role", "user", "content", prompt));
+
+        String url = llmConfig.getBaseUrl() + "/chat/completions";
+
+        try {
+            HttpPost post = new HttpPost(url);
+            post.setHeader("Content-Type", "application/json");
+            post.setHeader("Authorization", "Bearer " + llmConfig.getApiKey());
+            post.setHeader("HTTP-Referer", "http://localhost:8080");
+            post.setHeader("X-Title", "AI Interview Simulation");
+
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("model", llmConfig.getModel());
+
+            JSONArray messagesArray = new JSONArray();
+            for (Map<String, String> msg : messages) {
+                JSONObject msgObj = new JSONObject();
+                msgObj.put("role", msg.get("role"));
+                msgObj.put("content", msg.get("content"));
+                messagesArray.add(msgObj);
+            }
+            requestBody.put("messages", messagesArray);
+            requestBody.put("max_tokens", maxTokens);
+            requestBody.put("temperature", 0.7);
+
+            StringEntity entity = new StringEntity(requestBody.toJSONString(), ContentType.APPLICATION_JSON);
+            post.setEntity(entity);
+
+            String response = httpClient.execute(post, response1 -> {
+                int statusCode = response1.getCode();
+                String responseBody = EntityUtils.toString(response1.getEntity(), StandardCharsets.UTF_8);
+                log.debug("LLM API Response: {}", responseBody);
+
+                if (statusCode != 200) {
+                    log.error("LLM API Error: {} - {}", statusCode, responseBody);
+                    throw new RuntimeException("LLM API Error: " + statusCode);
+                }
+
+                JSONObject jsonResponse = JSON.parseObject(responseBody);
+                JSONArray choices = jsonResponse.getJSONArray("choices");
+                if (choices != null && choices.size() > 0) {
+                    JSONObject choice = choices.getJSONObject(0);
+                    JSONObject message = choice.getJSONObject("message");
+                    if (message != null) {
+                        return message.getString("content");
+                    }
+                }
+                return "";
+            });
+
+            return response;
+
+        } catch (IOException e) {
+            log.error("LLM API call failed", e);
+            // 尝试使用备选模型
+            return chatWithFallback(messages, llmConfig.getModel());
+        }
+    }
+
+    /**
      * 生成面试问题
      *
      * @param position 岗位名称
@@ -226,14 +301,19 @@ public class LlmService {
             "4. 应变能力 (adaptabilityScore)" +
             "5. 岗位匹配度 (matchingScore)" +
             "6. 综合评分 (overallScore)" +
-            "同时包含：亮点分析 (strengths)、不足分析 (weaknesses)、改进建议 (suggestions)、推荐学习资源 (recommendedResources)" +
-            "请以 JSON 格式返回评估报告。",
+            "同时包含以下四个文本字段：" +
+            "- 亮点分析 (strengths)：候选人表现突出的方面，列出具体优点，结合对话中的具体回答进行分析" +
+            "- 待改进之处 (weaknesses)：候选人需要改进的方面，列出具体不足，结合对话中的具体回答进行分析" +
+            "- 改进建议 (suggestions)：针对不足的具体改进建议和学习方法，给出可操作的步骤" +
+            "- 推荐学习资源 (recommendedResources)：相关的学习资源推荐，包括书籍、课程、项目等" +
+            "请以 JSON 格式返回评估报告，确保 strengths、weaknesses、suggestions、recommendedResources 都是详细的中文文本，每部分不少于3-5句话，内容要具体有针对性，不要泛泛而谈。" +
+            "只返回 JSON 格式，不要有其他说明。",
             position
         );
 
         String prompt = "面试对话历史：\n" + conversationHistory + "\n\n请生成综合评估报告：";
 
-        return simpleChat(prompt, systemPrompt);
+        return chatWithMaxTokens(prompt, systemPrompt, 2000);
     }
 
     /**
@@ -287,5 +367,117 @@ public class LlmService {
         log.info("RAG 评分完成 - 结果：{}", result);
         
         return result;
+    }
+
+    /**
+     * 使用千问视觉模型分析图片（多模态）
+     * 调用 qwen-vl-max 模型进行图片理解
+     *
+     * @param imageBase64 图片的 Base64 编码（data:image/jpeg;base64,...）
+     * @param prompt 提示词
+     * @return AI 响应内容
+     */
+    public String analyzeImage(String imageBase64, String prompt) {
+        String url = llmConfig.getBaseUrl() + "/chat/completions";
+        String visionModel = "qwen-vl-max";
+
+        try {
+            HttpPost post = new HttpPost(url);
+            post.setHeader("Content-Type", "application/json");
+            post.setHeader("Authorization", "Bearer " + llmConfig.getApiKey());
+            post.setHeader("HTTP-Referer", "http://localhost:8080");
+            post.setHeader("X-Title", "AI Interview Simulation");
+
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("model", visionModel);
+
+            // 构建多模态消息
+            JSONArray messagesArray = new JSONArray();
+
+            // 系统消息
+            JSONObject systemMsg = new JSONObject();
+            systemMsg.put("role", "system");
+            systemMsg.put("content", "你是一个专业的简历解析助手，擅长从简历图片中提取关键信息。");
+            messagesArray.add(systemMsg);
+
+            // 用户消息（包含图片和文本）
+            JSONObject userMsg = new JSONObject();
+            userMsg.put("role", "user");
+
+            JSONArray contentArray = new JSONArray();
+
+            // 图片内容
+            JSONObject imageContent = new JSONObject();
+            imageContent.put("type", "image_url");
+            JSONObject imageUrl = new JSONObject();
+            imageUrl.put("url", imageBase64);
+            imageContent.put("image_url", imageUrl);
+            contentArray.add(imageContent);
+
+            // 文本内容
+            JSONObject textContent = new JSONObject();
+            textContent.put("type", "text");
+            textContent.put("text", prompt);
+            contentArray.add(textContent);
+
+            userMsg.put("content", contentArray);
+            messagesArray.add(userMsg);
+
+            requestBody.put("messages", messagesArray);
+            requestBody.put("max_tokens", 2000);
+            requestBody.put("temperature", 0.5);
+
+            StringEntity entity = new StringEntity(requestBody.toJSONString(), ContentType.APPLICATION_JSON);
+            post.setEntity(entity);
+
+            String response = httpClient.execute(post, response1 -> {
+                int statusCode = response1.getCode();
+                String responseBody = EntityUtils.toString(response1.getEntity(), StandardCharsets.UTF_8);
+                log.debug("Qwen VL API Response: {}", responseBody);
+
+                if (statusCode != 200) {
+                    log.error("Qwen VL API Error: {} - {}", statusCode, responseBody);
+                    throw new RuntimeException("Qwen VL API Error: " + statusCode);
+                }
+
+                JSONObject jsonResponse = JSON.parseObject(responseBody);
+                JSONArray choices = jsonResponse.getJSONArray("choices");
+                if (choices != null && choices.size() > 0) {
+                    JSONObject choice = choices.getJSONObject(0);
+                    JSONObject message = choice.getJSONObject("message");
+                    if (message != null) {
+                        return message.getString("content");
+                    }
+                }
+                return "";
+            });
+
+            return response;
+
+        } catch (IOException e) {
+            log.error("Qwen VL API call failed", e);
+            throw new RuntimeException("千问视觉模型调用失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 解析简历图片内容
+     * 将简历页面转换为图片后调用千问视觉模型提取文本
+     *
+     * @param imageBase64 简历图片的 Base64 编码
+     * @return 提取的简历文本内容
+     */
+    public String parseResumeFromImage(String imageBase64) {
+        String prompt = "请仔细识别这张图片中的简历内容，并提取所有文本信息。" +
+            "请按以下格式返回：\n" +
+            "1. 基本信息（姓名、联系方式、邮箱等）\n" +
+            "2. 教育背景\n" +
+            "3. 工作经历\n" +
+            "4. 项目经历\n" +
+            "5. 技能特长\n" +
+            "6. 其他相关信息\n" +
+            "请尽可能详细地提取所有可见内容。";
+        
+        return analyzeImage(imageBase64, prompt);
     }
 }

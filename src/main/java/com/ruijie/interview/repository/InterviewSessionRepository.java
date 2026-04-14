@@ -10,4 +10,5 @@ import java.util.List;
 public interface InterviewSessionRepository extends JpaRepository<InterviewSession, Long> {
     List<InterviewSession> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<InterviewSession> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);
+    List<InterviewSession> findByUserIdAndPositionIdOrderByCreatedAtDesc(Long userId, String positionId);
 }

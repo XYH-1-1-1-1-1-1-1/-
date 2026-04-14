@@ -4,29 +4,33 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.rendering.PDFRenderer;
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 
 /**
  * PDF简历解析服务
- * 统一处理文本型和图片型PDF的内容提取
+ * 使用千问多模态视觉模型进行PDF内容提取
  * 
  * 工作流程:
  * 1. 首先尝试从PDF提取文本内容
- * 2. 如果提取到的文本内容很少(说明可能是图片型PDF)，则使用OCR识别
- * 3. 返回提取的完整文本内容
+ * 2. 如果提取到的文本内容很少(说明可能是图片型PDF)，则将页面转为图片
+ * 3. 调用千问视觉模型(qwen-vl-max)识别图片内容
+ * 4. 返回提取的完整文本内容
+ * 
+ * 注意：此功能仅供后端使用，前端不显示解析过程
  */
 @Service
 public class PdfResumeParser {
@@ -35,27 +39,17 @@ public class PdfResumeParser {
 
     /**
      * 判断PDF是否为图片型的阈值（字符数）
-     * 如果提取的文本字符数小于此值，则认为是图片型PDF，需要使用OCR
+     * 如果提取的文本字符数小于此值，则认为是图片型PDF，需要使用视觉模型
      */
     private static final int TEXT_THRESHOLD = 100;
 
     /**
-     * OCR临时图片存放目录
+     * 临时图片存放目录
      */
-    private static final String OCR_TEMP_DIR = "data/resumes/ocr_temp";
+    private static final String TEMP_DIR = "data/resumes/temp";
 
-    /**
-     * Tesseract数据文件路径
-     * 默认使用系统环境变量TESSDATA_PREFIX，如果未设置则使用默认路径
-     */
-    @Value("${pdf.parser.tessdata-path:}")
-    private String tessdataPath;
-
-    /**
-     * OCR识别语言，默认中文+英文
-     */
-    @Value("${pdf.parser.ocr-lang:chi_sim+eng}")
-    private String ocrLang;
+    @Autowired
+    private LlmService llmService;
 
     /**
      * 解析PDF文件内容，统一返回文本内容
@@ -81,9 +75,9 @@ public class PdfResumeParser {
                 return text;
             }
 
-            // 否则使用OCR识别
-            log.info("PDF可能是图片型，开始使用OCR识别...");
-            return extractTextWithOcr(pdfFile);
+            // 否则使用千问视觉模型识别
+            log.info("PDF可能是图片型，开始使用千问视觉模型识别...");
+            return extractTextWithQwenVL(pdfFile);
 
         } catch (Exception e) {
             log.error("PDF解析失败: {}", e.getMessage(), e);
@@ -103,34 +97,37 @@ public class PdfResumeParser {
     }
 
     /**
-     * 使用OCR识别PDF中的文本（将每页渲染为图片后识别）
+     * 使用千问视觉模型识别PDF中的文本（将每页渲染为图片后识别）
      */
-    private String extractTextWithOcr(File pdfFile) throws IOException, TesseractException {
+    private String extractTextWithQwenVL(File pdfFile) throws IOException {
         // 创建临时目录
-        Path tempDir = Paths.get(OCR_TEMP_DIR);
+        Path tempDir = Paths.get(TEMP_DIR);
         if (!Files.exists(tempDir)) {
             Files.createDirectories(tempDir);
         }
 
         StringBuilder fullText = new StringBuilder();
-        String prefix = "ocr_" + System.currentTimeMillis();
+        String prefix = "qwen_vl_" + System.currentTimeMillis();
 
         try (PDDocument document = Loader.loadPDF(pdfFile)) {
             PDFRenderer renderer = new PDFRenderer(document);
             int pageCount = document.getNumberOfPages();
 
-            log.info("PDF共 {} 页，开始OCR识别", pageCount);
+            log.info("PDF共 {} 页，开始千问视觉模型识别", pageCount);
 
             for (int i = 0; i < pageCount; i++) {
-                // 将页面渲染为图片（300 DPI提高识别率）
-                BufferedImage image = renderer.renderImageWithDPI(i, 300);
+                // 将页面渲染为图片（200 DPI，兼顾清晰度和文件大小）
+                BufferedImage image = renderer.renderImageWithDPI(i, 200);
 
-                // 保存临时图片
-                Path imagePath = tempDir.resolve(prefix + "_page_" + (i + 1) + ".png");
-                ImageIO.write(image, "PNG", imagePath.toFile());
+                // 转换为Base64
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(image, "PNG", baos);
+                byte[] imageBytes = baos.toByteArray();
+                String imageBase64 = "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);
 
-                // 使用Tesseract OCR识别图片文字
-                String pageText = ocrImage(imagePath.toFile());
+                // 调用千问视觉模型识别
+                log.info("正在调用千问视觉模型识别第 {} 页...", i + 1);
+                String pageText = llmService.parseResumeFromImage(imageBase64);
                 fullText.append(pageText);
 
                 // 添加页分隔符
@@ -138,38 +135,22 @@ public class PdfResumeParser {
                     fullText.append("\n\n--- 第 ").append(i + 1).append(" 页 ---\n\n");
                 }
 
-                // 删除临时图片
-                Files.delete(imagePath);
-
                 log.info("已处理第 {} 页，当前提取字符数: {}", i + 1, fullText.length());
+
+                // 避免API限流，适当延迟
+                if (i < pageCount - 1) {
+                    Thread.sleep(1000);
+                }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("解析过程被中断", e);
         }
 
-        // 清理临时目录（如果为空）
+        // 清理临时目录
         cleanTempDir(tempDir);
 
         return fullText.toString();
-    }
-
-    /**
-     * 使用Tesseract OCR识别图片文字
-     */
-    private String ocrImage(File imageFile) throws TesseractException {
-        Tesseract tesseract = new Tesseract();
-
-        // 设置tessdata路径
-        if (tessdataPath != null && !tessdataPath.isEmpty()) {
-            tesseract.setDatapath(tessdataPath);
-        }
-
-        // 设置识别语言
-        tesseract.setLanguage(ocrLang);
-
-        // 设置OCR模式为自动识别
-        tesseract.setPageSegMode(3);
-
-        // 执行识别
-        return tesseract.doOCR(imageFile);
     }
 
     /**
@@ -197,7 +178,7 @@ public class PdfResumeParser {
         Path tempFile = null;
         try {
             // 创建临时文件
-            Path tempDir = Paths.get(OCR_TEMP_DIR);
+            Path tempDir = Paths.get(TEMP_DIR);
             if (!Files.exists(tempDir)) {
                 Files.createDirectories(tempDir);
             }
