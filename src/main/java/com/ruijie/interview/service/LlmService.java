@@ -78,6 +78,13 @@ public class LlmService {
             requestBody.put("max_tokens", 1000);
             requestBody.put("temperature", 0.7);
 
+            // 支持阿里云百炼深度思考功能（仅 qwen3.6-plus 等模型支持）
+            if (llmConfig.isEnableThinking()) {
+                JSONObject extraBody = new JSONObject();
+                extraBody.put("enable_thinking", true);
+                requestBody.put("extra_body", extraBody);
+            }
+
             StringEntity entity = new StringEntity(requestBody.toJSONString(), ContentType.APPLICATION_JSON);
             post.setEntity(entity);
 

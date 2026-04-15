@@ -277,7 +277,7 @@ public class SpeechEvaluationService {
      */
     private void analyzeWithLLM(SpeechEvaluationRequest request, SpeechEvaluationResult result) {
         String url = llmConfig.getBaseUrl() + "/chat/completions";
-        String model = "qwen-max";
+        String model = llmConfig.getModel(); // 使用配置中的模型
 
         try {
             HttpPost post = new HttpPost(url);
@@ -286,6 +286,13 @@ public class SpeechEvaluationService {
 
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", model);
+
+            // 支持阿里云百炼深度思考功能（仅 qwen3.6-plus 等模型支持）
+            if (llmConfig.isEnableThinking()) {
+                JSONObject extraBody = new JSONObject();
+                extraBody.put("enable_thinking", true);
+                requestBody.put("extra_body", extraBody);
+            }
 
             JSONArray messagesArray = new JSONArray();
             

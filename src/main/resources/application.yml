@@ -65,10 +65,13 @@ app:
     api-key: sk-02e488d845ad4d38a4cf89ee8c5e52ec
     # API 基础 URL（DashScope 兼容 OpenAI 格式）
     base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    # 默认模型（通义千问 turbo 模型，免费额度充足）
-    model: qwen-max
+    # 默认模型（通义千问 3.6-plus 模型，支持深度思考）
+    model: qwen3.6-plus
+    # 是否启用深度思考功能（仅 qwen3.6-plus 等模型支持）
+    enable-thinking: true
     # 备选模型列表
     fallback-models:
+      - qwen3.6-plus
       - qwen-plus
       - qwen-max
       - qwen-long

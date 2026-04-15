@@ -37,6 +37,11 @@ public class LlmConfig {
      */
     private List<String> fallbackModels;
 
+    /**
+     * 是否启用深度思考（仅 qwen3.6-plus 等模型支持）
+     */
+    private boolean enableThinking = false;
+
     // Getter 和 Setter 方法
     public String getProvider() {
         return provider;
@@ -76,5 +81,13 @@ public class LlmConfig {
 
     public void setFallbackModels(List<String> fallbackModels) {
         this.fallbackModels = fallbackModels;
+    }
+
+    public boolean isEnableThinking() {
+        return enableThinking;
+    }
+
+    public void setEnableThinking(boolean enableThinking) {
+        this.enableThinking = enableThinking;
     }
 }
