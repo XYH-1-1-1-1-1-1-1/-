@@ -990,6 +990,129 @@
         let voiceAnswer = '';
         let currentHistoryPosition = null; // 当前历史记录筛选的岗位
         
+        // 声学特征分析器
+        let audioContext = null;
+        let analyser = null;
+        let microphoneSource = null;
+        let isAnalyzingAudio = false;
+        let audioPauseCount = 0;
+        let lastVolume = 0;
+        let volumeThreshold = 10;
+        let recordingStartTime = null;
+        let volumeData = [];  // 存储音量数据用于计算方差
+        
+        /**
+         * 初始化音频分析器
+         */
+        async function initAudioAnalyzer() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                microphoneSource = audioContext.createMediaStreamSource(stream);
+                microphoneSource.connect(analyser);
+                return true;
+            } catch (e) {
+                console.error('初始化音频分析器失败:', e);
+                return false;
+            }
+        }
+        
+        /**
+         * 获取当前音量 (0-100)
+         */
+        function getCurrentVolume() {
+            if (!analyser) return 0;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            const sum = dataArray.reduce((a, b) => a + b, 0);
+            return sum / dataArray.length;
+        }
+        
+        /**
+         * 监控音频特征
+         */
+        function monitorAudioFeatures() {
+            if (!isAnalyzingAudio) return;
+            
+            const volume = getCurrentVolume();
+            volumeData.push(volume);
+            
+            // 检测停顿（音量从有到无）
+            if (volume < volumeThreshold && lastVolume >= volumeThreshold) {
+                audioPauseCount++;
+            }
+            lastVolume = volume;
+            
+            // 继续监控
+            if (isAnalyzingAudio) {
+                setTimeout(() => monitorAudioFeatures(), 100);
+            }
+        }
+        
+        /**
+         * 获取采集的声学特征
+         */
+        function getAudioFeatures() {
+            const duration = recordingStartTime ? (Date.now() - recordingStartTime) / 1000 : 0;
+            const transcript = voiceAnswer;
+            const charCount = transcript ? transcript.length : 0;
+            const speechRate = duration > 0 ? (charCount / duration) * 60 : 0;  // 字/分钟
+            
+            // 计算音量方差
+            let volumeVariance = 0;
+            if (volumeData.length > 1) {
+                const avgVolume = volumeData.reduce((a, b) => a + b, 0) / volumeData.length;
+                volumeVariance = volumeData.reduce((sum, v) => sum + Math.pow(v - avgVolume, 2), 0) / volumeData.length;
+            }
+            
+            // 检测填充词（简单统计"嗯"、"啊"等）
+            let fillerCount = 0;
+            if (transcript) {
+                const fillerWords = ['嗯', '啊', '呃', '那个', '这个', '然后'];
+                fillerWords.forEach(word => {
+                    const regex = new RegExp(word, 'g');
+                    const matches = transcript.match(regex);
+                    if (matches) fillerCount += matches.length;
+                });
+            }
+            
+            return {
+                speechRate: Math.round(speechRate * 10) / 10,
+                pauseCount: audioPauseCount,
+                fillerCount: fillerCount,
+                duration: Math.round(duration * 10) / 10,
+                averageVolume: Math.round(lastVolume),
+                volumeVariance: Math.round(volumeVariance * 10) / 10
+            };
+        }
+        
+        /**
+         * 调用后端 API 进行语音表达评估
+         */
+        async function evaluateSpeechExpression(question, transcript, audioFeatures) {
+            try {
+                const response = await fetch(API_BASE + '/speech/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transcript: transcript,
+                        question: question,
+                        audioFeatures: audioFeatures
+                    })
+                });
+                const data = await response.json();
+                if (data.code === 200) {
+                    return data.data;
+                }
+                return null;
+            } catch (e) {
+                console.error('语音表达评估失败:', e);
+                return null;
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
@@ -1711,7 +1834,11 @@
             document.getElementById('interviewResult').classList.remove('hidden');
             
             const scoreGrid = document.getElementById('scoreGrid');
-            scoreGrid.innerHTML = `
+            
+            // 检查是否是真实面试模式，显示情绪分析
+            const isRealMode = currentSession && currentSession.interviewMode === 'REAL';
+            
+            let scoreHTML = `
                 <div class="score-item">
                     <div class="score-value">${report.technicalScore || 75}</div>
                     <div class="score-label">技术能力</div>
@@ -1738,6 +1865,29 @@
                 </div>
             `;
             
+            // 如果是真实面试模式，添加情绪状态和自信程度
+            if (isRealMode) {
+                const emotion = report.emotion || 'NORMAL';
+                const emotionLabel = getEmotionLabel(emotion);
+                const confidenceLevel = report.confidenceLevel || 3;
+                
+                scoreHTML += `
+                    <div class="score-item" style="grid-column: span 2;">
+                        <div class="score-value" style="font-size: 1.5em;">${emotionLabel}</div>
+                        <div class="score-label">😊 情绪状态</div>
+                        <div style="color: #888; font-size: 0.85em; margin-top: 8px;">
+                            ${report.emotionAnalysis || '情绪分析数据暂无'}
+                        </div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-value">${'⭐'.repeat(confidenceLevel)}</div>
+                        <div class="score-label">自信程度</div>
+                    </div>
+                `;
+            }
+            
+            scoreGrid.innerHTML = scoreHTML;
+            
             const strengthsList = document.getElementById('strengthsList');
             const strengths = (report.strengths || '候选人展现了良好的专业知识基础，对核心概念有清晰理解。').split(/[,.]/).filter(s => s.trim());
             strengthsList.innerHTML = strengths.map(s => `<li>• ${s.trim()}</li>`).join('');
@@ -1748,6 +1898,19 @@
             
             document.getElementById('suggestionsText').textContent = 
                 report.suggestions || '建议加强基础知识学习，多做项目实践，阅读优秀开源项目源码。';
+        }
+        
+        function getEmotionLabel(emotion) {
+            const emotionMap = {
+                'CONFIDENT': '😄 自信',
+                'NERVOUS': '😰 紧张',
+                'CALM': '😌 从容',
+                'ANXIOUS': '😟 焦虑',
+                'EXCITED': '🤩 兴奋',
+                'NORMAL': '🙂 平静',
+                'FOCUSED': '🎯 专注'
+            };
+            return emotionMap[emotion] || emotion;
         }
         
         function createMockReport(allSkipped) {

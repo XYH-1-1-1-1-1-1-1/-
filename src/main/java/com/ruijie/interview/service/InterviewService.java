@@ -43,6 +43,9 @@ public class InterviewService {
     @Autowired
     private RagService ragService;
 
+    @Autowired
+    private AudioAnalysisService audioAnalysisService;
+
     /**
      * 开始新的面试会话（默认练习模式）
      */
@@ -609,6 +612,39 @@ public class InterviewService {
         report.setSpeechRate("NORMAL");
         report.setClarity("GOOD");
         report.setConfidence("NORMAL");
+        
+        // 如果是真实面试模式，添加情绪分析
+        if ("REAL".equals(session.getInterviewMode())) {
+            try {
+                log.info("[情绪分析] 真实面试模式，开始分析情绪状态 - 会话 ID: {}", session.getId());
+                
+                // 使用千问大模型分析对话历史中的情绪
+                AudioAnalysisService.AudioAnalysisResult emotionResult = 
+                    audioAnalysisService.analyzeEmotionAndScore(
+                        session.getConversationHistory(), 
+                        "请根据以下面试对话历史分析候选人的情绪状态"
+                    );
+                
+                report.setEmotion(emotionResult.getEmotion());
+                report.setEmotionAnalysis(emotionResult.getEmotionAnalysis());
+                report.setConfidenceLevel(emotionResult.getConfidenceLevel());
+                report.setTranscript(emotionResult.getTranscript());
+                
+                log.info("[情绪分析] 情绪分析完成 - 情绪：{}, 自信程度：{}", 
+                    emotionResult.getEmotion(), emotionResult.getConfidenceLevel());
+                    
+            } catch (Exception e) {
+                log.error("[情绪分析] 分析失败，使用默认值", e);
+                report.setEmotion("NORMAL");
+                report.setEmotionAnalysis("情绪状态分析暂时不可用");
+                report.setConfidenceLevel(3);
+            }
+        } else {
+            // 练习模式使用默认值
+            report.setEmotion("NORMAL");
+            report.setEmotionAnalysis("练习模式下不进行情绪分析");
+            report.setConfidenceLevel(3);
+        }
 
         return reportRepository.save(report);
     }

@@ -88,6 +88,57 @@ public class EvaluationReport {
     @Column(length = 20)
     private String confidence;
 
+    // 情绪状态（用于真实面试模式）
+    @Column(length = 50)
+    private String emotion;
+
+    // 情绪分析详细说明
+    @Column(columnDefinition = "TEXT")
+    private String emotionAnalysis;
+
+    // 自信程度评分（1-5 分）
+    @Column
+    private Integer confidenceLevel;
+
+    // 语音转录文本（用于真实面试模式）
+    @Column(columnDefinition = "TEXT")
+    private String transcript;
+
+    // 语音表达评分（用于真实面试模式）
+    @Column
+    private Integer speechRateScore;        // 语速评分 (0-100)
+
+    @Column
+    private Integer clarityScore;           // 清晰度评分 (0-100)
+
+    @Column
+    private Integer confidenceScore;        // 自信度评分 (0-100)
+
+    @Column
+    private Integer fluencyScore;           // 流畅度评分 (0-100)
+
+    @Column
+    private Integer expressionScore;        // 表达力评分 (0-100)
+
+    // 语音表达分析详情
+    @Column(columnDefinition = "TEXT")
+    private String speechRateAnalysis;      // 语速分析
+
+    @Column(columnDefinition = "TEXT")
+    private String clarityAnalysis;         // 清晰度分析
+
+    @Column(columnDefinition = "TEXT")
+    private String confidenceAnalysis;      // 自信度分析
+
+    @Column(columnDefinition = "TEXT")
+    private String fluencyAnalysis;         // 流畅度分析
+
+    @Column(columnDefinition = "TEXT")
+    private String expressionAnalysis;      // 表达力分析
+
+    @Column(columnDefinition = "TEXT")
+    private String overallAnalysis;         // 综合分析
+
     // 亮点分析
     @Column(columnDefinition = "TEXT")
     private String strengths;
@@ -224,6 +275,126 @@ public class EvaluationReport {
 
     public void setConfidence(String confidence) {
         this.confidence = confidence;
+    }
+
+    public String getEmotion() {
+        return emotion;
+    }
+
+    public void setEmotion(String emotion) {
+        this.emotion = emotion;
+    }
+
+    public String getEmotionAnalysis() {
+        return emotionAnalysis;
+    }
+
+    public void setEmotionAnalysis(String emotionAnalysis) {
+        this.emotionAnalysis = emotionAnalysis;
+    }
+
+    public Integer getConfidenceLevel() {
+        return confidenceLevel;
+    }
+
+    public void setConfidenceLevel(Integer confidenceLevel) {
+        this.confidenceLevel = confidenceLevel;
+    }
+
+    public String getTranscript() {
+        return transcript;
+    }
+
+    public void setTranscript(String transcript) {
+        this.transcript = transcript;
+    }
+
+    public Integer getSpeechRateScore() {
+        return speechRateScore;
+    }
+
+    public void setSpeechRateScore(Integer speechRateScore) {
+        this.speechRateScore = speechRateScore;
+    }
+
+    public Integer getClarityScore() {
+        return clarityScore;
+    }
+
+    public void setClarityScore(Integer clarityScore) {
+        this.clarityScore = clarityScore;
+    }
+
+    public Integer getConfidenceScore() {
+        return confidenceScore;
+    }
+
+    public void setConfidenceScore(Integer confidenceScore) {
+        this.confidenceScore = confidenceScore;
+    }
+
+    public Integer getFluencyScore() {
+        return fluencyScore;
+    }
+
+    public void setFluencyScore(Integer fluencyScore) {
+        this.fluencyScore = fluencyScore;
+    }
+
+    public Integer getExpressionScore() {
+        return expressionScore;
+    }
+
+    public void setExpressionScore(Integer expressionScore) {
+        this.expressionScore = expressionScore;
+    }
+
+    public String getSpeechRateAnalysis() {
+        return speechRateAnalysis;
+    }
+
+    public void setSpeechRateAnalysis(String speechRateAnalysis) {
+        this.speechRateAnalysis = speechRateAnalysis;
+    }
+
+    public String getClarityAnalysis() {
+        return clarityAnalysis;
+    }
+
+    public void setClarityAnalysis(String clarityAnalysis) {
+        this.clarityAnalysis = clarityAnalysis;
+    }
+
+    public String getConfidenceAnalysis() {
+        return confidenceAnalysis;
+    }
+
+    public void setConfidenceAnalysis(String confidenceAnalysis) {
+        this.confidenceAnalysis = confidenceAnalysis;
+    }
+
+    public String getFluencyAnalysis() {
+        return fluencyAnalysis;
+    }
+
+    public void setFluencyAnalysis(String fluencyAnalysis) {
+        this.fluencyAnalysis = fluencyAnalysis;
+    }
+
+    public String getExpressionAnalysis() {
+        return expressionAnalysis;
+    }
+
+    public void setExpressionAnalysis(String expressionAnalysis) {
+        this.expressionAnalysis = expressionAnalysis;
+    }
+
+    public String getOverallAnalysis() {
+        return overallAnalysis;
+    }
+
+    public void setOverallAnalysis(String overallAnalysis) {
+        this.overallAnalysis = overallAnalysis;
     }
 
     public String getStrengths() {
