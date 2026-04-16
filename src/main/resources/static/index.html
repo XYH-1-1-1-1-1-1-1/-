@@ -1402,6 +1402,17 @@
         }
         
         async function startInterview(positionCode) {
+            // 真实面试模式下检查是否有简历
+            if (currentMode === 'REAL') {
+                const resumeResp = await fetch(API_BASE + `/user/${currentUser.id}/resume`);
+                const resumeData = await resumeResp.json();
+                if (resumeData.code !== 200 || !resumeData.data) {
+                    showToast('真实面试模式需要先提交个人简历，请在个人中心上传简历', 'error');
+                    switchTab('profile');
+                    return;
+                }
+            }
+            
             try {
                 const resp = await fetch(API_BASE + '/interview/start', {
                     method: 'POST',
@@ -1431,7 +1442,7 @@
                     addMessage('system', '🎉 面试已开始，祝你好运！');
                     
                     setTimeout(() => {
-                        addMessage('ai', `你好！我是今天的AI面试官。很高兴能和你交流。我们将从专业问题开始面试，请认真回答每个问题。`, '🤖 AI面试官 · 开场白');
+                        addMessage('ai', `你好！我是今天的 AI 面试官。很高兴能和你交流。${currentMode === 'REAL' ? '我们将从自我介绍开始，然后围绕你的简历经历进行提问。' : '我们将从专业问题开始面试，'}请认真回答每个问题。`, '🤖 AI 面试官 · 开场白');
                         setTimeout(() => {
                             loadQuestion();
                         }, 1500);

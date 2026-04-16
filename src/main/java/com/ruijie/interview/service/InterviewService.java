@@ -46,6 +46,12 @@ public class InterviewService {
     @Autowired
     private AudioAnalysisService audioAnalysisService;
 
+    @Autowired
+    private ResumeService resumeService;
+
+    // 用于缓存简历相关问题的生成状态
+    private final Map<Long, List<String>> resumeQuestionCache = new HashMap<>();
+
     /**
      * 开始新的面试会话（默认练习模式）
      */
@@ -56,18 +62,28 @@ public class InterviewService {
 
     /**
      * 开始新的面试会话（支持指定模式）
-     * @param interviewMode 面试模式：REAL（真实面试-语音）/ PRACTICE（练习面试-文字）
+     * @param interviewMode 面试模式：REAL（真实面试 - 语音）/ PRACTICE（练习面试 - 文字）
      */
     @Transactional
     public InterviewSession startInterview(Long userId, String positionCode, String interviewMode) {
         Position position = positionService.findByCode(positionCode)
             .orElseThrow(() -> new RuntimeException("岗位不存在：" + positionCode));
 
+        // 真实面试模式下检查是否有简历
+        if ("REAL".equals(interviewMode)) {
+            if (!resumeService.hasResume(userId)) {
+                throw new RuntimeException("真实面试模式需要先提交个人简历");
+            }
+        }
+
         InterviewSession session = new InterviewSession();
         session.setUserId(userId);
         session.setPositionId(positionCode);
         session.setStatus("IN_PROGRESS");
-        session.setTotalQuestions(position.getQuestionCount());
+        // 真实面试模式 18 题：1 自我介绍 + 10 简历相关 + 5 题库随机 + 2 开放性
+        // 练习模式保持原有题目数量
+        int totalQuestions = "REAL".equals(interviewMode) ? 18 : position.getQuestionCount();
+        session.setTotalQuestions(totalQuestions);
         session.setAnsweredQuestions(0);
         session.setConversationHistory("");
         session.setStartTime(LocalDateTime.now());
@@ -359,7 +375,6 @@ public class InterviewService {
             } catch (Exception e) {
                 log.error("RAG 评分失败，使用默认分数", e);
                 // 评分失败给中等分数 50 分，而不是最低分
-                // 这样可以让用户看到真实的评分差异
                 userAnswer.setTechnicalScore(50);
                 userAnswer.setCommunicationScore(50);
                 userAnswer.setLogicScore(50);
@@ -374,13 +389,11 @@ public class InterviewService {
 
     /**
      * 确保分数在有效范围内 (0-100)
-     * 注意：不再强制设置最低分，让评分真实反映回答质量
      */
     private Integer ensureMinScore(Integer score) {
         if (score == null) {
-            return 50; // 默认中等分数，而不是最低分
+            return 50;
         }
-        // 限制在 0-100 范围内
         return Math.max(0, Math.min(score, 100));
     }
 
@@ -436,15 +449,24 @@ public class InterviewService {
 
     /**
      * 获取下一个问题（结合 RAG）
+     * 真实面试模式出题逻辑：
+     * - 第 1 题：自我介绍
+     * - 第 2-11 题（10 题）：围绕简历实践经历提问（使用 STAR 法则）
+     * - 第 12-16 题（5 题）：题库随机抽取
+     * - 第 17-18 题（2 题）：开放性问题
      */
     private Question getNextQuestion(InterviewSession session, int questionIndex) {
-        // 根据进度选择不同难度的问题
+        // 真实面试模式使用新的出题逻辑
+        if ("REAL".equals(session.getInterviewMode())) {
+            return getRealInterviewQuestion(session, questionIndex);
+        }
+        
+        // 练习模式保持原有逻辑
         int difficulty = 1;
         if (questionIndex > 2) difficulty = 2;
         if (questionIndex > 5) difficulty = 3;
         if (questionIndex > 8) difficulty = 4;
 
-        // 按类别轮询
         String[] categories = {"技术知识", "项目经验", "行为题"};
         String category = categories[questionIndex % categories.length];
 
@@ -456,11 +478,183 @@ public class InterviewService {
         }
 
         if (questions.isEmpty()) {
-            // 如果题库为空，使用 AI 生成问题
             return generateAiQuestion(session.getPositionId(), category, difficulty);
         }
 
         return questions.get(questionIndex % questions.size());
+    }
+    
+    /**
+     * 真实面试模式出题逻辑
+     * @param session 面试会话
+     * @param questionIndex 当前题号（从 0 开始）
+     * @return 下一个问题
+     */
+    private Question getRealInterviewQuestion(InterviewSession session, int questionIndex) {
+        Position position = positionService.findByCode(session.getPositionId()).orElse(null);
+        String positionName = position != null ? position.getName() : "技术岗位";
+        
+        // 第 1 题：自我介绍（questionIndex = 0）
+        if (questionIndex == 0) {
+            Question q = new Question();
+            q.setPositionId(session.getPositionId());
+            q.setCategory("开场");
+            q.setContent("您好，请先做一个简短的自我介绍吧。");
+            q.setDifficultyLevel(1);
+            return q;
+        }
+        
+        // 第 2-11 题（questionIndex = 1~10）：围绕简历实践经历提问
+        if (questionIndex >= 1 && questionIndex <= 10) {
+            return getResumeBasedQuestion(session, positionName, questionIndex);
+        }
+        
+        // 第 12-16 题（questionIndex = 11~15）：题库随机抽取
+        if (questionIndex >= 11 && questionIndex <= 15) {
+            return getRandomQuestionFromBank(session.getPositionId());
+        }
+        
+        // 第 17-18 题（questionIndex = 16~17）：开放性问题
+        if (questionIndex >= 16 && questionIndex <= 17) {
+            return getOpenQuestion(session, positionName, questionIndex);
+        }
+        
+        // 默认返回 AI 生成问题
+        return generateAiQuestion(session.getPositionId(), "技术知识", 3);
+    }
+    
+    /**
+     * 基于简历内容的提问（第 2-11 题）
+     * 使用 STAR 法则或行为面试法，围绕实习经历、项目经历提问
+     */
+    private Question getResumeBasedQuestion(InterviewSession session, String positionName, int questionIndex) {
+        try {
+            // 获取用户简历内容
+            Optional<String> resumeContentOpt = resumeService.getUserResumeContent(session.getUserId());
+            
+            if (resumeContentOpt.isPresent()) {
+                String resumeContent = resumeContentOpt.get();
+                
+                // 获取之前的回答历史，用于生成追问
+                String conversationHistory = session.getConversationHistory();
+                
+                // 构建提示词，让大模型基于简历内容生成问题
+                String prompt = String.format(
+                    "你是一位专业的 %s 岗位面试官，正在对候选人进行面试。\n" +
+                    "以下是候选人的简历内容：\n---\n%s\n---\n\n" +
+                    "之前的面试对话历史：\n---\n%s\n---\n\n" +
+                    "这是面试的第 %d 题（共 10 题围绕简历的提问，题号从 1 到 10）。\n" +
+                    "请根据以下规则生成问题：\n" +
+                    "1. 如果简历中有实习经历、项目经历或其他实践内容，请针对这些内容使用 STAR 法则（Situation 情境、Task 任务、Action 行动、Result 结果）进行提问。\n" +
+                    "2. 如果简历中没有明显的实践经历，请使用行为面试法，通过假设性提问来考察候选人的能力。\n" +
+                    "3. 如果之前已经有过相关提问，请避免重复，可以从不同角度深入追问。\n" +
+                    "4. 问题应该具体、有针对性，能够考察候选人的实际能力和经验。\n" +
+                    "5. 第 1-3 题可以侧重基本情况了解，第 4-7 题深入具体项目，第 8-10 题可以进行行为面试或追问。\n\n" +
+                    "请直接返回问题内容，不要有任何前缀说明。");
+                
+                String questionContent = llmService.simpleChat(prompt, 
+                    "你是一位专业的面试官，擅长使用 STAR 法则和行为面试法进行面试。");
+                
+                if (questionContent != null && !questionContent.trim().isEmpty()) {
+                    Question q = new Question();
+                    q.setPositionId(session.getPositionId());
+                    q.setCategory("简历相关");
+                    q.setContent(questionContent.trim());
+                    q.setDifficultyLevel(2 + (questionIndex - 1) / 3); // 难度递增
+                    return q;
+                }
+            }
+            
+            // 如果简历解析失败或内容为空，使用备用方案
+            return getBehavioralQuestion(session, positionName, questionIndex);
+            
+        } catch (Exception e) {
+            log.error("生成简历相关问题失败", e);
+            return getBehavioralQuestion(session, positionName, questionIndex);
+        }
+    }
+    
+    /**
+     * 行为面试法提问（当简历内容无法解析时使用）
+     */
+    private Question getBehavioralQuestion(InterviewSession session, String positionName, int questionIndex) {
+        String[] behavioralQuestions = {
+            "请描述一次你在团队中遇到冲突的经历，你是如何处理的？",
+            "请举例说明你是如何在压力下完成一项重要任务的？",
+            "描述一次你主动承担责任并解决问题的经历。",
+            "请分享一次你从失败中学习的经历，你学到了什么？",
+            "描述一次你需要快速学习新知识或技能来完成任务的经历。",
+            "请举例说明你是如何设定目标并达成它的？",
+            "描述一次你提出创新想法并付诸实践的经历。",
+            "请分享一次你帮助团队成员克服困难的经历。",
+            "描述一次你处理多任务并确定优先级的经历。",
+            "请举例说明你是如何说服他人接受你的观点的？"
+        };
+        
+        Question q = new Question();
+        q.setPositionId(session.getPositionId());
+        q.setCategory("行为面试");
+        q.setContent(behavioralQuestions[(questionIndex - 1) % behavioralQuestions.length]);
+        q.setDifficultyLevel(2);
+        return q;
+    }
+    
+    /**
+     * 从题库随机抽取问题（第 12-16 题）
+     */
+    private Question getRandomQuestionFromBank(String positionId) {
+        List<Question> allQuestions = questionService.findByPositionId(positionId);
+        
+        if (allQuestions.isEmpty()) {
+            // 如果题库为空，生成技术问题
+            return generateAiQuestion(positionId, "技术知识", 3);
+        }
+        
+        // 随机选择一个问题
+        Random random = new Random();
+        Question selected = allQuestions.get(random.nextInt(allQuestions.size()));
+        
+        Question q = new Question();
+        q.setPositionId(positionId);
+        q.setCategory("题库");
+        q.setContent(selected.getContent());
+        q.setDifficultyLevel(selected.getDifficultyLevel());
+        return q;
+    }
+    
+    /**
+     * 开放性问题（第 17-18 题）
+     */
+    private Question getOpenQuestion(InterviewSession session, String positionName, int questionIndex) {
+        String[] openQuestions = {
+            "你对我们公司的这个岗位有什么了解？为什么选择应聘这个岗位？",
+            "你对这个岗位的未来发展有什么期望？你希望在这个岗位上实现什么目标？",
+            "你认为自己最大的优势和劣势是什么？它们如何影响你的工作？",
+            "你如何看待团队合作？请分享一次你成功协作的经历。",
+            "你对自己的职业发展有什么规划？这个岗位如何帮助你实现目标？"
+        };
+        
+        String[] openQuestionsAlt = {
+            "你认为一个优秀的 " + positionName + " 应该具备哪些核心能力？",
+            "请谈谈你对行业技术发展趋势的看法。",
+            "你如何平衡工作质量和工作效率？",
+            "描述一下你理想中的工作环境和团队氛围。",
+            "如果工作中遇到技术难题，你通常会如何解决？"
+        };
+        
+        Question q = new Question();
+        q.setPositionId(session.getPositionId());
+        q.setCategory("开放性");
+        
+        // 第 17 题使用第一组，第 18 题使用第二组
+        if (questionIndex == 16) {
+            q.setContent(openQuestions[new Random().nextInt(openQuestions.length)]);
+        } else {
+            q.setContent(openQuestionsAlt[new Random().nextInt(openQuestionsAlt.length)]);
+        }
+        
+        q.setDifficultyLevel(2);
+        return q;
     }
 
     /**
@@ -497,19 +691,15 @@ public class InterviewService {
 
     /**
      * 基于各题平均分和大模型分析生成评估报告
-     * 评分基于各题平均分，三个反馈板块（亮点分析、待改进之处、改进建议）基于完整对话历史由大模型生成
      */
     @Transactional
     public EvaluationReport generateEvaluationReportFromScores(InterviewSession session) {
-        // 获取所有回答
         List<Answer> answers = answerRepository.findBySessionIdOrderByQuestionId(session.getId());
         
         if (answers.isEmpty()) {
-            // 没有回答记录，使用默认分数
             return createDefaultReport(session);
         }
 
-        // 计算各维度平均分
         int totalTechnical = 0;
         int totalCommunication = 0;
         int totalLogic = 0;
@@ -534,18 +724,15 @@ public class InterviewService {
             }
         }
         
-        // 计算平均分（至少有一题才计算）
         int avgTechnical = answeredCount > 0 ? totalTechnical / answeredCount : 10;
         int avgCommunication = answeredCount > 0 ? totalCommunication / answeredCount : 10;
         int avgLogic = answeredCount > 0 ? totalLogic / answeredCount : 10;
         int avgKnowledge = answeredCount > 0 ? totalKnowledge / answeredCount : 10;
         int avgOverall = answeredCount > 0 ? totalOverall / answeredCount : 10;
         
-        // 根据跳过题目数量调整分数（每跳过一题扣 2 分）
         int skipPenalty = skippedCount * 2;
         avgOverall = Math.max(10, avgOverall - skipPenalty);
         
-        // 使用大模型基于完整对话历史生成三个反馈板块
         String strengths = "候选人完成了面试";
         String weaknesses = "部分问题可以回答得更深入";
         String suggestions = "建议继续学习和实践";
@@ -557,7 +744,6 @@ public class InterviewService {
             
             log.info("[大模型评估报告] 开始生成评估报告 - 会话 ID: {}, 岗位：{}", session.getId(), positionName);
             
-            // 调用大模型生成综合评估报告
             String evalJson = llmService.generateEvaluationReport(
                 session.getConversationHistory(), 
                 positionName
@@ -565,7 +751,6 @@ public class InterviewService {
             
             log.info("[大模型评估报告] LLM 返回结果：{}", evalJson);
             
-            // 解析评估结果
             JSONObject evalData = parseEvaluationJson(evalJson);
             
             strengths = evalData.getString("strengths");
@@ -594,7 +779,6 @@ public class InterviewService {
             log.error("[大模型评估报告] 生成失败，使用默认反馈文本", e);
         }
         
-        // 创建评估报告
         EvaluationReport report = new EvaluationReport();
         report.setSessionId(session.getId());
         report.setUserId(session.getUserId());
@@ -602,8 +786,8 @@ public class InterviewService {
         report.setTechnicalScore(avgTechnical);
         report.setCommunicationScore(avgCommunication);
         report.setLogicScore(avgLogic);
-        report.setAdaptabilityScore(avgKnowledge); // 用知识深度作为应变能力
-        report.setMatchingScore(avgOverall); // 用平均分作为匹配度
+        report.setAdaptabilityScore(avgKnowledge);
+        report.setMatchingScore(avgOverall);
         report.setOverallScore(avgOverall);
         report.setStrengths(strengths);
         report.setWeaknesses(weaknesses);
@@ -613,12 +797,10 @@ public class InterviewService {
         report.setClarity("GOOD");
         report.setConfidence("NORMAL");
         
-        // 如果是真实面试模式，添加情绪分析
         if ("REAL".equals(session.getInterviewMode())) {
             try {
                 log.info("[情绪分析] 真实面试模式，开始分析情绪状态 - 会话 ID: {}", session.getId());
                 
-                // 使用千问大模型分析对话历史中的情绪
                 AudioAnalysisService.AudioAnalysisResult emotionResult = 
                     audioAnalysisService.analyzeEmotionAndScore(
                         session.getConversationHistory(), 
@@ -640,7 +822,6 @@ public class InterviewService {
                 report.setConfidenceLevel(3);
             }
         } else {
-            // 练习模式使用默认值
             report.setEmotion("NORMAL");
             report.setEmotionAnalysis("练习模式下不进行情绪分析");
             report.setConfidenceLevel(3);
@@ -681,16 +862,13 @@ public class InterviewService {
         Position position = positionService.findByCode(session.getPositionId()).orElse(null);
         String positionName = position != null ? position.getName() : "技术岗位";
 
-        // 使用 AI 生成评估
         String evalJson = llmService.generateEvaluationReport(
             session.getConversationHistory(), 
             positionName
         );
 
-        // 解析评估结果
         JSONObject evalData = parseEvaluationJson(evalJson);
 
-        // 创建评估报告
         EvaluationReport report = new EvaluationReport();
         report.setSessionId(session.getId());
         report.setUserId(session.getUserId());
@@ -706,7 +884,6 @@ public class InterviewService {
         report.setSuggestions(evalData.getString("suggestions"));
         report.setRecommendedResources(evalData.getString("recommendedResources"));
 
-        // 语音相关评估（暂时使用默认值）
         report.setSpeechRate("NORMAL");
         report.setClarity("GOOD");
         report.setConfidence("NORMAL");
@@ -719,7 +896,6 @@ public class InterviewService {
      */
     private JSONObject parseEvaluationJson(String jsonStr) {
         try {
-            // 尝试提取 JSON 部分
             int start = jsonStr.indexOf("{");
             int end = jsonStr.lastIndexOf("}");
             if (start >= 0 && end > start) {
@@ -728,7 +904,6 @@ public class InterviewService {
             
             JSONObject json = JSON.parseObject(jsonStr);
             
-            // 确保所有字段都有值
             ensureField(json, "technicalScore", 70);
             ensureField(json, "communicationScore", 70);
             ensureField(json, "logicScore", 70);
@@ -743,7 +918,6 @@ public class InterviewService {
             return json;
         } catch (Exception e) {
             log.error("解析评估结果失败", e);
-            // 返回默认评估
             JSONObject defaultJson = new JSONObject();
             defaultJson.put("technicalScore", 70);
             defaultJson.put("communicationScore", 70);
@@ -784,30 +958,25 @@ public class InterviewService {
      */
     @Transactional
     public void deleteInterviewSession(Long sessionId) {
-        // 先删除相关的回答记录
         List<Answer> answers = answerRepository.findBySessionIdOrderByQuestionId(sessionId);
         if (!answers.isEmpty()) {
             answerRepository.deleteAll(answers);
         }
         
-        // 删除相关的评估报告
         Optional<EvaluationReport> report = reportRepository.findBySessionId(sessionId);
         report.ifPresent(reportRepository::delete);
         
-        // 最后删除面试会话
         sessionRepository.deleteById(sessionId);
     }
 
     /**
      * 主动退出面试（不保存任何记录）
-     * 用于用户在面试过程中主动退出或拒绝恢复面试
      */
     @Transactional
     public void exitInterview(Long sessionId) {
-        log.info("[退出面试] 开始退出面试会话，会话ID: {}", sessionId);
-        // 直接删除会话及相关数据，不保存任何历史记录
+        log.info("[退出面试] 开始退出面试会话，会话 ID: {}", sessionId);
         deleteInterviewSession(sessionId);
-        log.info("[退出面试] 面试会话已删除，会话ID: {}", sessionId);
+        log.info("[退出面试] 面试会话已删除，会话 ID: {}", sessionId);
     }
 
     /**

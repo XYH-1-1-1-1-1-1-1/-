@@ -62,7 +62,7 @@ app:
     # API 提供商：dashscope / openrouter / huggingface / ollama
     provider: dashscope
     # API Key
-    api-key: sk-02e488d845ad4d38a4cf89ee8c5e52ec
+    api-key:
     # API 基础 URL（DashScope 兼容 OpenAI 格式）
     base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
     # 默认模型（通义千问 3.6-plus 模型，支持深度思考）
