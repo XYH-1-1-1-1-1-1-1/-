@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 面试会话服务类 - 核心业务逻辑
@@ -51,6 +52,67 @@ public class InterviewService {
 
     // 用于缓存简历相关问题的生成状态
     private final Map<Long, List<String>> resumeQuestionCache = new HashMap<>();
+    
+    // 异步评分线程池
+    private final ExecutorService scoringExecutor = Executors.newFixedThreadPool(
+        Math.max(2, Runtime.getRuntime().availableProcessors()),
+        new ThreadFactory() {
+            private int count = 0;
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "AsyncScorer-" + (++count));
+                t.setDaemon(true);
+                return t;
+            }
+        }
+    );
+    
+    // 评分任务状态跟踪：sessionId -> 评分任务状态
+    private final ConcurrentHashMap<Long, ScoringStatus> scoringStatusMap = new ConcurrentHashMap<>();
+    
+    /**
+     * 评分任务状态
+     */
+    public static class ScoringStatus {
+        public int totalQuestions;      // 总题数
+        public int scoredQuestions;     // 已评分数
+        public boolean completed;       // 是否完成
+        public LocalDateTime startTime; // 开始时间
+        
+        public ScoringStatus(int totalQuestions) {
+            this.totalQuestions = totalQuestions;
+            this.scoredQuestions = 0;
+            this.completed = false;
+            this.startTime = LocalDateTime.now();
+        }
+        
+        public synchronized void incrementScored() {
+            this.scoredQuestions++;
+        }
+        
+        public synchronized void markCompleted() {
+            this.completed = true;
+        }
+        
+        public int getProgress() {
+            if (totalQuestions == 0) return 0;
+            return (int) ((scoredQuestions * 100.0) / totalQuestions);
+        }
+    }
+    
+    /**
+     * 获取评分状态
+     */
+    public ScoringStatus getScoringStatus(Long sessionId) {
+        return scoringStatusMap.get(sessionId);
+    }
+    
+    /**
+     * 清除评分状态
+     */
+    public void removeScoringStatus(Long sessionId) {
+        scoringStatusMap.remove(sessionId);
+    }
 
     /**
      * 开始新的面试会话（默认练习模式）
@@ -181,6 +243,7 @@ public class InterviewService {
 
     /**
      * 提交回答并获取下一个问题
+     * 优化：使用异步评分，立即返回下一个问题
      */
     @Transactional
     public InterviewResponse submitAnswer(Long sessionId, Long userId, String answer, String answerType) {
@@ -195,8 +258,8 @@ public class InterviewService {
         int questionIndex = session.getAnsweredQuestions() + 1;
         Question currentQuestion = getCurrentQuestion(session, questionIndex);
         
-        // 保存回答并使用 RAG 评分
-        Answer userAnswer = scoreAnswerWithRag(sessionId, currentQuestion, answer, answerType, false);
+        // 保存回答（使用临时分数）
+        Answer userAnswer = saveAnswerWithTempScore(sessionId, currentQuestion, answer, answerType, false);
 
         // 更新会话
         session.setAnsweredQuestions(session.getAnsweredQuestions() + 1);
@@ -213,16 +276,23 @@ public class InterviewService {
             
             sessionRepository.save(session);
             
-            // 生成评估报告（基于各题平均分）
-            EvaluationReport report = generateEvaluationReportFromScores(session);
+            // 初始化评分状态跟踪
+            ScoringStatus status = new ScoringStatus(session.getTotalQuestions());
+            scoringStatusMap.put(sessionId, status);
+            
+            // 异步生成评估报告（包含异步评分）
+            asyncGenerateReportWithScoring(session);
             
             return new InterviewResponse(
                 true,
-                "面试已结束",
+                "面试已结束，正在生成评估报告...",
                 null,
-                report
+                null  // 报告稍后生成
             );
         }
+
+        // 异步评分当前回答
+        asyncScoreAnswer(sessionId, currentQuestion, answer, answerType, false);
 
         // 获取下一个问题
         Question nextQuestion = getNextQuestion(session, session.getAnsweredQuestions());
@@ -235,6 +305,107 @@ public class InterviewService {
             nextQuestion,
             null
         );
+    }
+    
+    /**
+     * 异步评分回答
+     */
+    private void asyncScoreAnswer(Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
+        scoringExecutor.submit(() -> {
+            try {
+                log.info("[异步评分] 开始异步评分 - 会话 ID: {}, 问题：{}", sessionId, 
+                    question != null ? question.getContent() : "N/A");
+                
+                // 执行实际评分
+                Answer scoredAnswer = scoreAnswerWithRag(sessionId, question, answer, answerType, isSkipped);
+                
+                // 更新已评分计数
+                ScoringStatus status = scoringStatusMap.get(sessionId);
+                if (status != null) {
+                    status.incrementScored();
+                    log.info("[异步评分] 评分进度：{}/{} ({}%)", 
+                        status.scoredQuestions, status.totalQuestions, status.getProgress());
+                }
+                
+                log.info("[异步评分] 评分完成 - 会话 ID: {}, 总体分数：{}", sessionId, scoredAnswer.getOverallScore());
+            } catch (Exception e) {
+                log.error("[异步评分] 评分失败 - 会话 ID: {}", sessionId, e);
+            }
+        });
+    }
+    
+    /**
+     * 异步生成评估报告（等待所有评分完成后）
+     */
+    private void asyncGenerateReportWithScoring(InterviewSession session) {
+        scoringExecutor.submit(() -> {
+            try {
+                Long sessionId = session.getId();
+                ScoringStatus status = scoringStatusMap.get(sessionId);
+                
+                // 等待所有评分完成（最多等待 5 分钟）
+                long startTime = System.currentTimeMillis();
+                long timeout = 5 * 60 * 1000; // 5 分钟
+                
+                while (status != null && !status.completed && 
+                       status.scoredQuestions < status.totalQuestions &&
+                       (System.currentTimeMillis() - startTime) < timeout) {
+                    Thread.sleep(500);
+                }
+                
+                if (status != null && !status.completed) {
+                    log.warn("[异步报告] 评分超时，但仍生成报告 - 会话 ID: {}, 进度：{}/{}", 
+                        sessionId, status.scoredQuestions, status.totalQuestions);
+                }
+                
+                // 生成评估报告
+                log.info("[异步报告] 开始生成评估报告 - 会话 ID: {}", sessionId);
+                EvaluationReport report = generateEvaluationReportFromScores(session);
+                
+                // 标记评分完成
+                if (status != null) {
+                    status.markCompleted();
+                }
+                
+                log.info("[异步报告] 评估报告生成完成 - 会话 ID: {}, 总体分数：{}", sessionId, report.getOverallScore());
+                
+            } catch (Exception e) {
+                log.error("[异步报告] 生成报告失败 - 会话 ID: {}", session.getId(), e);
+            }
+        });
+    }
+    
+    /**
+     * 保存回答时使用临时分数（用于异步评分场景）
+     */
+    private Answer saveAnswerWithTempScore(Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
+        Answer userAnswer = new Answer();
+        userAnswer.setSessionId(sessionId);
+        userAnswer.setQuestionId(question != null ? question.getId() : 0L);
+        userAnswer.setUserAnswer(answer);
+        userAnswer.setAnswerType(answerType);
+        userAnswer.setWordCount(answer != null ? answer.length() : 0);
+        userAnswer.setIsSkipped(isSkipped);
+
+        if (isSkipped || answer == null || answer.trim().isEmpty()) {
+            // 跳过或空回答给最低分 10 分
+            userAnswer.setTechnicalScore(10);
+            userAnswer.setCommunicationScore(10);
+            userAnswer.setLogicScore(10);
+            userAnswer.setKnowledgeDepth(10);
+            userAnswer.setOverallScore(10);
+            userAnswer.setEvaluationComment("候选人跳过此问题或回答为空");
+        } else {
+            // 给临时分数，等待异步评分更新
+            userAnswer.setTechnicalScore(50);
+            userAnswer.setCommunicationScore(50);
+            userAnswer.setLogicScore(50);
+            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setOverallScore(50);
+            userAnswer.setEvaluationComment("正在评分中...");
+        }
+
+        return answerRepository.save(userAnswer);
     }
 
     /**

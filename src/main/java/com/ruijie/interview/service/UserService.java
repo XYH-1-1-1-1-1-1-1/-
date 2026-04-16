@@ -117,6 +117,7 @@ public class UserService {
     /**
      * 获取所有用户
      */
+    @Transactional(readOnly = true)
     public List<User> findAll() {
         return userRepository.findAll();
     }

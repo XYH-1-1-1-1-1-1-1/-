@@ -750,6 +750,85 @@
             padding: 8px 16px;
             font-size: 0.9em;
         }
+        
+        /* 报告生成中过渡界面 */
+        .report-loading-container {
+            display: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 40px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .report-loading-container.active {
+            display: block;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 30px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .report-loading-container h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+        
+        .report-loading-container p {
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 8;
+        }
+        
+        .progress-ring .bg {
+            stroke: rgba(255,255,255,0.1);
+        }
+        
+        .progress-ring .progress {
+            stroke: #00d4ff;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .loading-tips {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 20px;
+            line-height: 1.8;
+        }
     </style>
 </head>
 <body>
@@ -883,6 +962,27 @@
                     </div>
                 </div>
                 
+                <!-- 报告生成中过渡界面 -->
+                <div id="reportLoading" class="report-loading-container hidden">
+                    <div class="progress-ring">
+                        <svg width="120" height="120">
+                            <circle class="bg" cx="60" cy="60" r="52"></circle>
+                            <circle class="progress" cx="60" cy="60" r="52" 
+                                stroke-dasharray="326.73" 
+                                stroke-dashoffset="326.73" 
+                                id="progressCircle"></circle>
+                        </svg>
+                        <div class="progress-text" id="progressText">0%</div>
+                    </div>
+                    <h2>📊 正在生成评估报告</h2>
+                    <p id="loadingMessage">AI 正在仔细分析您的回答，请稍候...</p>
+                    <div class="loading-tips">
+                        <p>💡 评分维度包括：</p>
+                        <p>技术能力 | 沟通能力 | 逻辑思维 | 应变能力 | 岗位匹配度</p>
+                        <p style="margin-top: 10px;">报告生成通常需要 30-60 秒，请耐心等待</p>
+                    </div>
+                </div>
+                
                 <div id="interviewResult" class="report-container hidden">
                     <h2>面试评估报告</h2>
                     <div class="score-grid" id="scoreGrid"></div>
@@ -988,6 +1088,12 @@
         let realVoiceRecognition = null;
         let voiceAnswer = '';
         let currentHistoryPosition = null; // 当前历史记录筛选的岗位
+        
+        // 报告生成轮询相关
+        let reportPollingTimer = null;
+        let reportPollingCount = 0;
+        const REPORT_POLL_INTERVAL = 2000; // 2 秒轮询一次
+        const REPORT_POLL_TIMEOUT = 5 * 60 * 1000; // 5 分钟超时
         
         // 声学特征分析器
         let audioContext = null;
@@ -1598,9 +1704,30 @@
             document.getElementById('chatContainer').innerHTML = '';
         }
         
+        /**
+         * 显示下一个问题（用于真实面试模式，后端返回问题时使用）
+         */
+        function showNextQuestion(question) {
+            const totalQuestions = currentSession.totalQuestions || 18;
+            
+            document.getElementById('interviewProgress').textContent = 
+                `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
+            document.getElementById('progressFill').style.width = 
+                `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+            
+            disableSkipButton();
+            showTypingIndicator();
+            
+            setTimeout(() => {
+                hideTypingIndicator();
+                addMessage('ai', question.content, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
+                enableSkipButton();
+            }, 800);
+        }
+        
         function loadQuestion() {
-            const positionQuestions = getPositionQuestions();
-            const totalQuestions = positionQuestions.length;
+            // 真实面试模式下，问题由后端动态生成，需要从会话中获取进度
+            const totalQuestions = currentSession.totalQuestions || 10;
             
             if (currentQuestionIndex < totalQuestions) {
                 document.getElementById('interviewProgress').textContent = 
@@ -1613,13 +1740,29 @@
                 
                 showTypingIndicator();
                 
-                setTimeout(() => {
-                    hideTypingIndicator();
-                    const question = positionQuestions[currentQuestionIndex];
-                    addMessage('ai', question, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
-                    // 问题完全显示后才启用跳过按钮
-                    enableSkipButton();
-                }, 800);
+                // 真实面试模式下，问题由后端在 submitAnswer 时返回，这里只需要显示提示
+                if (currentSession && currentSession.interviewMode === 'REAL') {
+                    // 第 1 题是自我介绍，后续题目由后端生成
+                    setTimeout(() => {
+                        hideTypingIndicator();
+                        // 如果是第 1 题（自我介绍），直接显示
+                        if (currentQuestionIndex === 0) {
+                            addMessage('ai', '您好，请先做一个简短的自我介绍吧。', `🤖 AI 面试官 · 问题 1`);
+                            enableSkipButton();
+                        }
+                        // 其他题目会在 submitAnswer 后由后端返回
+                    }, 800);
+                } else {
+                    // 练习模式使用硬编码的问题
+                    const positionQuestions = getPositionQuestions();
+                    setTimeout(() => {
+                        hideTypingIndicator();
+                        const question = positionQuestions[currentQuestionIndex];
+                        addMessage('ai', question, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
+                        // 问题完全显示后才启用跳过按钮
+                        enableSkipButton();
+                    }, 800);
+                }
             }
         }
         
@@ -1662,7 +1805,8 @@
                 if (data.code === 200) {
                     const response = data.data;
                     if (response.isFinished) {
-                        showReport(response.report);
+                        // 使用新的报告生成中界面
+                        showReportLoading();
                     } else {
                         currentQuestionIndex++;
                         if (currentSession.interviewMode === 'REAL') {
@@ -1674,7 +1818,13 @@
                             document.getElementById('answerInput').value = '';
                         }
                         enableInput();
-                        loadQuestion();
+                        
+                        // 使用后端返回的下一个问题
+                        if (response.nextQuestion && response.nextQuestion.content) {
+                            showNextQuestion(response.nextQuestion);
+                        } else {
+                            loadQuestion();
+                        }
                         showToast('回答已提交', 'success');
                     }
                 } else {
@@ -1682,20 +1832,10 @@
                     showToast(data.message, 'error');
                 }
             } catch (e) {
-                currentQuestionIndex++;
-                if (currentQuestionIndex >= 10) {
-                    showReport(createMockReport());
-                } else {
-                    if (currentSession && currentSession.interviewMode === 'REAL') {
-                        voiceAnswer = '';
-                        document.getElementById('voiceAnswerText').textContent = '请点击"开始录音"进行语音回答...';
-                    } else {
-                        document.getElementById('answerInput').value = '';
-                    }
-                    enableInput();
-                    loadQuestion();
-                    showToast('回答已提交', 'success');
-                }
+                // API 请求失败，恢复输入并提示错误
+                enableInput();
+                showToast('提交失败，请检查网络连接', 'error');
+                console.error('提交回答失败:', e);
             }
         }
         
@@ -1714,7 +1854,8 @@
                 if (data.code === 200) {
                     const response = data.data;
                     if (response.isFinished) {
-                        showReport(response.report);
+                        // 使用新的报告生成中界面，而不是直接显示报告
+                        showReportLoading();
                     } else {
                         currentQuestionIndex++;
                         if (currentSession.interviewMode === 'REAL') {
@@ -1726,7 +1867,13 @@
                             document.getElementById('answerInput').value = '';
                         }
                         enableInput();
-                        loadQuestion();
+                        
+                        // 使用后端返回的下一个问题
+                        if (response.nextQuestion && response.nextQuestion.content) {
+                            showNextQuestion(response.nextQuestion);
+                        } else {
+                            loadQuestion();
+                        }
                         showToast('已跳过此题', 'success');
                     }
                 } else {
@@ -2338,6 +2485,103 @@
                 };
                 
                 recognition.start();
+            }
+        }
+        
+        /**
+         * 显示报告生成中界面并开始轮询
+         */
+        function showReportLoading() {
+            document.getElementById('interviewing').classList.add('hidden');
+            document.getElementById('interviewResult').classList.add('hidden');
+            document.getElementById('reportLoading').classList.add('active');
+            
+            reportPollingCount = 0;
+            startPollingReport();
+        }
+        
+        /**
+         * 更新进度环
+         */
+        function updateProgressRing(progress) {
+            const circle = document.getElementById('progressCircle');
+            const text = document.getElementById('progressText');
+            const circumference = 2 * Math.PI * 52; // r=52
+            const offset = circumference - (progress / 100) * circumference;
+            
+            circle.style.strokeDashoffset = offset;
+            text.textContent = progress + '%';
+        }
+        
+        /**
+         * 开始轮询报告状态
+         */
+        function startPollingReport() {
+            const startTime = Date.now();
+            
+            function poll() {
+                const elapsed = Date.now() - startTime;
+                
+                if (elapsed >= REPORT_POLL_TIMEOUT) {
+                    stopPollingReport();
+                    showToast('报告生成超时，请稍后在历史记录中查看', 'error');
+                    switchTab('positions');
+                    return;
+                }
+                
+                fetch(API_BASE + `/interview/${currentSession.id}/report-status`)
+                    .then(resp => resp.json())
+                    .then(data => {
+                        if (data.code === 200) {
+                            const status = data.data;
+                            
+                            if (status.completed && status.report) {
+                                // 报告已生成
+                                stopPollingReport();
+                                showReport(status.report);
+                                showToast('评估报告已生成', 'success');
+                            } else {
+                                // 更新进度
+                                const progress = status.progress || 0;
+                                updateProgressRing(progress);
+                                
+                                // 更新提示消息
+                                const messages = [
+                                    'AI 正在仔细阅读您的回答...',
+                                    '正在分析技术要点...',
+                                    '正在评估沟通能力...',
+                                    '正在检查逻辑思维...',
+                                    '正在计算综合评分...',
+                                    '正在生成个性化建议...',
+                                    '报告即将完成...'
+                                ];
+                                const msgIndex = Math.min(Math.floor(progress / 15), messages.length - 1);
+                                document.getElementById('loadingMessage').textContent = messages[msgIndex];
+                                
+                                // 继续轮询
+                                reportPollingTimer = setTimeout(poll, REPORT_POLL_INTERVAL);
+                            }
+                        } else {
+                            // 请求失败，继续轮询
+                            reportPollingTimer = setTimeout(poll, REPORT_POLL_INTERVAL);
+                        }
+                    })
+                    .catch(e => {
+                        console.error('轮询报告状态失败:', e);
+                        reportPollingTimer = setTimeout(poll, REPORT_POLL_INTERVAL);
+                    });
+            }
+            
+            poll();
+        }
+        
+        /**
+         * 停止轮询报告
+         */
+        function stopPollingReport() {
+            if (reportPollingTimer) {
+                clearTimeout(reportPollingTimer);
+                reportPollingTimer = null;
             }
         }
         

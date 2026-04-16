@@ -44,6 +44,7 @@ public class PositionService {
     /**
      * 获取所有岗位
      */
+    @Transactional(readOnly = true)
     public List<Position> findAll() {
         return positionRepository.findAll();
     }

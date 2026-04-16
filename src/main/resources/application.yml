@@ -85,7 +85,7 @@ app:
   # 系统配置
   system:
     # 面试超时时间 (分钟)
-    interview-timeout: 30
+    interview-timeout: 60
     # 每轮回答最大字数
     max-answer-length: 500
     # 历史面试记录保留数量

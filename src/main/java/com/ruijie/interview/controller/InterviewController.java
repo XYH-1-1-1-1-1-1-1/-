@@ -273,4 +273,46 @@ public class InterviewController {
             return UserController.ApiResponse.error(e.getMessage());
         }
     }
+    
+    /**
+     * 检查评估报告生成进度（用于异步评分场景）
+     */
+    @GetMapping("/{sessionId}/report-status")
+    public UserController.ApiResponse<Map<String, Object>> getReportStatus(@PathVariable Long sessionId) {
+        try {
+            // 先检查报告是否已生成
+            Optional<EvaluationReport> reportOpt = interviewService.getReportBySessionId(sessionId);
+            
+            Map<String, Object> result = new HashMap<>();
+            
+            if (reportOpt.isPresent()) {
+                // 报告已生成
+                result.put("completed", true);
+                result.put("report", reportOpt.get());
+                return UserController.ApiResponse.success(result);
+            }
+            
+            // 报告未生成，检查评分进度
+            InterviewService.ScoringStatus status = interviewService.getScoringStatus(sessionId);
+            
+            if (status != null) {
+                result.put("completed", false);
+                result.put("progress", status.getProgress());
+                result.put("scoredQuestions", status.scoredQuestions);
+                result.put("totalQuestions", status.totalQuestions);
+                result.put("message", "正在生成评估报告，请稍候...");
+            } else {
+                // 没有评分任务，可能是会话不存在或已结束但未开始评分
+                result.put("completed", false);
+                result.put("progress", 0);
+                result.put("message", "等待报告生成...");
+            }
+            
+            return UserController.ApiResponse.success(result);
+            
+        } catch (Exception e) {
+            log.error("获取报告状态失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
 }
