@@ -482,6 +482,15 @@ public class InterviewService {
 
     /**
      * 使用 RAG 评分保存回答
+     * 根据问题类别选择评分方式：
+     * - 题库类问题：使用 RAG 增强评分（检索知识库中的相关知识）
+     * - 非题库类问题（自我介绍、简历相关、开放性、行为面试）：直接使用 LLM 评分
+     * 
+     * 真实面试模式出题逻辑：
+     * - 第 1 题：自我介绍（类别："开场"）
+     * - 第 2-11 题（10 题）：简历相关（类别："简历相关"）
+     * - 第 12-16 题（5 题）：题库随机（类别："题库"）
+     * - 第 17-18 题（2 题）：开放性（类别："开放性"）
      */
     private Answer scoreAnswerWithRag(Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
         Answer userAnswer = new Answer();
@@ -501,61 +510,287 @@ public class InterviewService {
             userAnswer.setOverallScore(10);
             userAnswer.setEvaluationComment("候选人跳过此问题或回答为空");
         } else {
-            // 使用 RAG 评分
+            // 获取问题类别，决定评分方式
+            String category = question.getCategory() != null ? question.getCategory() : "技术知识";
+            
+            // 判断是否属于题库类问题（使用 RAG 增强评分）
+            // 题库类别包括：技术知识、项目经验、行为题、数据库、框架、系统设计等
+            // 非题库类别：开场、简历相关、开放性、行为面试
+            boolean useRag = shouldUseRagScoring(category);
+            
+            if (useRag) {
+                // 使用 RAG 增强评分
+                scoreWithRag(userAnswer, sessionId, question, answer, category);
+            } else {
+                // 使用纯 LLM 评分（不检索知识库）
+                scoreWithLlmOnly(userAnswer, sessionId, question, answer, category);
+            }
+        }
+
+        return answerRepository.save(userAnswer);
+    }
+    
+    /**
+     * 判断是否应该使用 RAG 评分
+     * @param category 问题类别
+     * @return true 表示使用 RAG 增强评分，false 表示使用纯 LLM 评分
+     */
+    private boolean shouldUseRagScoring(String category) {
+        // 非题库类别，不使用 RAG
+        if ("开场".equals(category) || "简历相关".equals(category) || 
+            "开放性".equals(category) || "行为面试".equals(category)) {
+            return false;
+        }
+        // 其他类别（技术知识、项目经验、行为题、数据库、框架、系统设计、题库等）使用 RAG
+        return true;
+    }
+    
+    /**
+     * 使用 RAG 增强评分（检索知识库后评分）
+     */
+    private void scoreWithRag(Answer userAnswer, Long sessionId, Question question, String answer, String category) {
+        int maxRetries = 2;
+        int retryCount = 0;
+        boolean scored = false;
+        
+        while (!scored && retryCount <= maxRetries) {
             try {
                 InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
-                if (session != null && question != null) {
-                    String category = question.getCategory() != null ? question.getCategory() : "技术知识";
-                    log.info("[RAG 评分] 开始评分 - 会话 ID: {}, 岗位：{}, 类别：{}, 问题：{}", 
-                        sessionId, session.getPositionId(), category, question.getContent());
-                    
-                    String evalJson = ragService.evaluateAnswerWithRag(
-                        session.getPositionId(), 
-                        category, 
-                        question.getContent(), 
-                        answer
-                    );
-                    
-                    log.info("[RAG 评分] LLM 返回结果：{}", evalJson);
-                    
-                    // 解析评分
-                    JSONObject evalData = parseScoreJson(evalJson);
-                    log.info("[RAG 评分] 解析后的分数 - technicalScore: {}, communicationScore: {}, logicScore: {}, knowledgeDepth: {}, overallScore: {}",
-                        evalData.getInteger("technicalScore"),
-                        evalData.getInteger("communicationScore"),
-                        evalData.getInteger("logicScore"),
-                        evalData.getInteger("knowledgeDepth"),
-                        evalData.getInteger("overallScore"));
-                    
-                    Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
-                    Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
-                    Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
-                    Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
-                    Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
-                    
-                    log.info("[RAG 评分] 最终分数 - technicalScore: {}, communicationScore: {}, logicScore: {}, knowledgeDepth: {}, overallScore: {}",
-                        technicalScore, communicationScore, logicScore, knowledgeDepthScore, overallScore);
-                    
+                if (session == null) {
+                    log.warn("[RAG 评分] 会话不存在 - 会话 ID: {}", sessionId);
+                    break;
+                }
+                
+                log.info("[RAG 评分] 开始评分 (重试 {}/{}) - 会话 ID: {}, 岗位：{}, 类别：{}", 
+                    retryCount, maxRetries, sessionId, session.getPositionId(), category);
+                
+                String evalJson = ragService.evaluateAnswerWithRag(
+                    session.getPositionId(), 
+                    category, 
+                    question.getContent(), 
+                    answer
+                );
+                
+                log.info("[RAG 评分] LLM 返回结果：{}", evalJson);
+                
+                JSONObject evalData = parseScoreJson(evalJson);
+                
+                Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
+                Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
+                Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
+                Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
+                Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
+                
+                // 验证分数是否有效（不能全是默认值 50）
+                if (technicalScore != 50 || communicationScore != 50 || 
+                    logicScore != 50 || knowledgeDepthScore != 50 || overallScore != 50) {
                     userAnswer.setTechnicalScore(technicalScore);
                     userAnswer.setCommunicationScore(communicationScore);
                     userAnswer.setLogicScore(logicScore);
                     userAnswer.setKnowledgeDepth(knowledgeDepthScore);
                     userAnswer.setOverallScore(overallScore);
                     userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
+                    scored = true;
+                    log.info("[RAG 评分] 评分成功 - 会话 ID: {}, 总体分数：{}", sessionId, overallScore);
+                } else if (retryCount >= maxRetries) {
+                    log.warn("[RAG 评分] 达到最大重试次数，使用默认分数 - 会话 ID: {}", sessionId);
+                    scored = true;
+                } else {
+                    retryCount++;
+                    log.warn("[RAG 评分] 评分结果为默认值，{} 秒后重试 ({}/{})", 
+                        2 * retryCount, retryCount, maxRetries);
+                    Thread.sleep(2000 * retryCount);
                 }
+                
             } catch (Exception e) {
-                log.error("RAG 评分失败，使用默认分数", e);
-                // 评分失败给中等分数 50 分，而不是最低分
-                userAnswer.setTechnicalScore(50);
-                userAnswer.setCommunicationScore(50);
-                userAnswer.setLogicScore(50);
-                userAnswer.setKnowledgeDepth(50);
-                userAnswer.setOverallScore(50);
-                userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。建议检查网络连接或 API 配置。");
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                    log.error("[RAG 评分] 评分被中断 - 会话 ID: {}", sessionId, e);
+                    scored = true;
+                    break;
+                }
+                retryCount++;
+                if (retryCount > maxRetries) {
+                    log.error("[RAG 评分] 评分失败，使用默认分数 - 会话 ID: {}, 错误：{}", 
+                        sessionId, e.getMessage(), e);
+                    scored = true;
+                } else {
+                    log.warn("[RAG 评分] 评分失败，{} 秒后重试 ({}/{}) - 错误：{}", 
+                        2 * retryCount, retryCount, maxRetries, e.getMessage());
+                    try {
+                        Thread.sleep(2000 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        scored = true;
+                    }
+                }
             }
         }
-
-        return answerRepository.save(userAnswer);
+        
+        // 如果最终失败，给中等分数 50 分
+        if (!scored || userAnswer.getOverallScore() == null) {
+            userAnswer.setTechnicalScore(50);
+            userAnswer.setCommunicationScore(50);
+            userAnswer.setLogicScore(50);
+            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setOverallScore(50);
+            userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。建议检查网络连接或 API 配置。");
+        }
+    }
+    
+    /**
+     * 使用纯 LLM 评分（不检索知识库，适用于非题库类问题）
+     * 用于自我介绍、简历相关问题、开放性问题、行为面试等
+     */
+    private void scoreWithLlmOnly(Answer userAnswer, Long sessionId, Question question, String answer, String category) {
+        int maxRetries = 2;
+        int retryCount = 0;
+        boolean scored = false;
+        
+        while (!scored && retryCount <= maxRetries) {
+            try {
+                InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+                if (session == null) {
+                    log.warn("[LLM 评分] 会话不存在 - 会话 ID: {}", sessionId);
+                    break;
+                }
+                
+                log.info("[LLM 评分] 开始评分 (重试 {}/{}) - 会话 ID: {}, 类别：{}", 
+                    retryCount, maxRetries, sessionId, category);
+                
+                // 构建评分提示词
+                String prompt = buildLlmScoringPrompt(question.getContent(), answer, category, session.getPositionId());
+                
+                String evalJson = llmService.simpleChat(prompt, 
+                    "你是一位专业的面试官，擅长评估候选人的回答质量。请根据评分标准给出客观公正的分数。");
+                
+                log.info("[LLM 评分] LLM 返回结果：{}", evalJson);
+                
+                JSONObject evalData = parseScoreJson(evalJson);
+                
+                Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
+                Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
+                Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
+                Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
+                Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
+                
+                // 验证分数是否有效
+                if (technicalScore != 50 || communicationScore != 50 || 
+                    logicScore != 50 || knowledgeDepthScore != 50 || overallScore != 50) {
+                    userAnswer.setTechnicalScore(technicalScore);
+                    userAnswer.setCommunicationScore(communicationScore);
+                    userAnswer.setLogicScore(logicScore);
+                    userAnswer.setKnowledgeDepth(knowledgeDepthScore);
+                    userAnswer.setOverallScore(overallScore);
+                    userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
+                    scored = true;
+                    log.info("[LLM 评分] 评分成功 - 会话 ID: {}, 总体分数：{}", sessionId, overallScore);
+                } else if (retryCount >= maxRetries) {
+                    log.warn("[LLM 评分] 达到最大重试次数，使用默认分数 - 会话 ID: {}", sessionId);
+                    scored = true;
+                } else {
+                    retryCount++;
+                    log.warn("[LLM 评分] 评分结果为默认值，{} 秒后重试 ({}/{})", 
+                        2 * retryCount, retryCount, maxRetries);
+                    Thread.sleep(2000 * retryCount);
+                }
+                
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("[LLM 评分] 评分被中断 - 会话 ID: {}", sessionId, e);
+                scored = true;
+            } catch (Exception e) {
+                retryCount++;
+                if (retryCount > maxRetries) {
+                    log.error("[LLM 评分] 评分失败，使用默认分数 - 会话 ID: {}, 错误：{}", 
+                        sessionId, e.getMessage(), e);
+                    scored = true;
+                } else {
+                    log.warn("[LLM 评分] 评分失败，{} 秒后重试 ({}/{}) - 错误：{}", 
+                        2 * retryCount, retryCount, maxRetries, e.getMessage());
+                    try {
+                        Thread.sleep(2000 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        scored = true;
+                    }
+                }
+            }
+        }
+        
+        // 如果最终失败，给中等分数 50 分
+        if (!scored || userAnswer.getOverallScore() == null) {
+            userAnswer.setTechnicalScore(50);
+            userAnswer.setCommunicationScore(50);
+            userAnswer.setLogicScore(50);
+            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setOverallScore(50);
+            userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。");
+        }
+    }
+    
+    /**
+     * 构建纯 LLM 评分的提示词
+     */
+    private String buildLlmScoringPrompt(String question, String answer, String category, String positionId) {
+        String positionName = getPositionName(positionId);
+        
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是一位专业的").append(positionName).append("岗位面试官。\n\n");
+        prompt.append("请对候选人的回答进行评分，评分维度包括：\n");
+        prompt.append("1. technicalScore（技术分数 0-100）：考察技术深度和专业性\n");
+        prompt.append("2. communicationScore（沟通分数 0-100）：考察表达清晰度和逻辑性\n");
+        prompt.append("3. logicScore（逻辑分数 0-100）：考察回答的结构和条理性\n");
+        prompt.append("4. knowledgeDepth（知识深度 0-100）：考察知识广度和深度\n");
+        prompt.append("5. overallScore（综合分数 0-100）：综合以上维度的整体评价\n\n");
+        
+        // 根据类别调整评分侧重点
+        if ("开场".equals(category)) {
+            prompt.append("【评分侧重点】这是自我介绍环节，请重点考察：\n");
+            prompt.append("- 表达是否清晰流畅\n");
+            prompt.append("- 是否突出了个人优势和亮点\n");
+            prompt.append("- 是否与岗位匹配度高\n");
+        } else if ("简历相关".equals(category)) {
+            prompt.append("【评分侧重点】这是基于简历的提问，请重点考察：\n");
+            prompt.append("- 是否使用 STAR 法则清晰描述了项目经历\n");
+            prompt.append("- 是否突出了个人贡献和成果\n");
+            prompt.append("- 回答是否具体、有说服力\n");
+        } else if ("开放性".equals(category)) {
+            prompt.append("【评分侧重点】这是开放性问题，请重点考察：\n");
+            prompt.append("- 思考是否有深度和广度\n");
+            prompt.append("- 观点是否清晰、有逻辑\n");
+            prompt.append("- 是否展现了良好的职业素养\n");
+        } else if ("行为面试".equals(category)) {
+            prompt.append("【评分侧重点】这是行为面试问题，请重点考察：\n");
+            prompt.append("- 是否使用 STAR 法则描述具体事例\n");
+            prompt.append("- 是否展现了良好的软技能\n");
+            prompt.append("- 回答是否真实、有说服力\n");
+        }
+        
+        prompt.append("\n【问题】\n").append(question);
+        prompt.append("\n\n【候选人回答】\n").append(answer);
+        prompt.append("\n\n请返回 JSON 格式的评分结果，包含以下字段：\n");
+        prompt.append("technicalScore, communicationScore, logicScore, knowledgeDepth, overallScore, evaluationComment\n\n");
+        prompt.append("evaluationComment 请包含：\n");
+        prompt.append("1. 优点（strengths）\n");
+        prompt.append("2. 不足（weaknesses）\n");
+        prompt.append("3. 改进建议（suggestions）\n\n");
+        prompt.append("直接返回 JSON，不要有任何前缀说明。");
+        
+        return prompt.toString();
+    }
+    
+    /**
+     * 根据岗位 ID 获取岗位名称
+     */
+    private String getPositionName(String positionId) {
+        return switch (positionId != null ? positionId : "") {
+            case "backend" -> "后端开发工程师";
+            case "frontend" -> "前端开发工程师";
+            case "qa" -> "测试工程师";
+            case "algorithm" -> "算法工程师";
+            default -> "技术";
+        };
     }
 
     /**
@@ -697,52 +932,85 @@ public class InterviewService {
     /**
      * 基于简历内容的提问（第 2-11 题）
      * 使用 STAR 法则或行为面试法，围绕实习经历、项目经历提问
+     * 增加重试机制和更好的错误处理
      */
     private Question getResumeBasedQuestion(InterviewSession session, String positionName, int questionIndex) {
-        try {
-            // 获取用户简历内容
-            Optional<String> resumeContentOpt = resumeService.getUserResumeContent(session.getUserId());
-            
-            if (resumeContentOpt.isPresent()) {
-                String resumeContent = resumeContentOpt.get();
+        int maxRetries = 2;
+        int retryCount = 0;
+        
+        while (retryCount <= maxRetries) {
+            try {
+                // 获取用户简历内容
+                Optional<String> resumeContentOpt = resumeService.getUserResumeContent(session.getUserId());
                 
-                // 获取之前的回答历史，用于生成追问
-                String conversationHistory = session.getConversationHistory();
+                if (resumeContentOpt.isPresent()) {
+                    String resumeContent = resumeContentOpt.get();
+                    
+                    // 获取之前的回答历史，用于生成追问
+                    String conversationHistory = session.getConversationHistory();
+                    
+                    // 构建提示词，让大模型基于简历内容生成问题
+                    String prompt = String.format(
+                        "你是一位专业的 %s 岗位面试官，正在对候选人进行面试。\n" +
+                        "以下是候选人的简历内容：\n---\n%s\n---\n\n" +
+                        "之前的面试对话历史：\n---\n%s\n---\n\n" +
+                        "这是面试的第 %d 题（共 10 题围绕简历的提问，题号从 1 到 10）。\n" +
+                        "请根据以下规则生成问题：\n" +
+                        "1. 如果简历中有实习经历、项目经历或其他实践内容，请针对这些内容使用 STAR 法则（Situation 情境、Task 任务、Action 行动、Result 结果）进行提问。\n" +
+                        "2. 如果简历中没有明显的实践经历，请使用行为面试法，通过假设性提问来考察候选人的能力。\n" +
+                        "3. 如果之前已经有过相关提问，请避免重复，可以从不同角度深入追问。\n" +
+                        "4. 问题应该具体、有针对性，能够考察候选人的实际能力和经验。\n" +
+                        "5. 第 1-3 题可以侧重基本情况了解，第 4-7 题深入具体项目，第 8-10 题可以进行行为面试或追问。\n\n" +
+                        "请直接返回问题内容，不要有任何前缀说明。");
+                    
+                    log.info("[简历问题] 开始生成问题 (重试 {}/{}) - 会话 ID: {}, 用户 ID: {}", 
+                        retryCount, maxRetries, session.getId(), session.getUserId());
+                    
+                    String questionContent = llmService.simpleChat(prompt, 
+                        "你是一位专业的面试官，擅长使用 STAR 法则和行为面试法进行面试。");
+                    
+                    if (questionContent != null && !questionContent.trim().isEmpty()) {
+                        Question q = new Question();
+                        q.setPositionId(session.getPositionId());
+                        q.setCategory("简历相关");
+                        q.setContent(questionContent.trim());
+                        q.setDifficultyLevel(2 + (questionIndex - 1) / 3); // 难度递增
+                        log.info("[简历问题] 问题生成成功 - 会话 ID: {}", session.getId());
+                        return q;
+                    } else {
+                        log.warn("[简历问题] LLM 返回空内容，重试 ({}/{})", retryCount + 1, maxRetries);
+                    }
+                } else {
+                    log.warn("[简历问题] 未找到简历内容 - 用户 ID: {}", session.getUserId());
+                    // 简历不存在，直接使用备用方案，不重试
+                    return getBehavioralQuestion(session, positionName, questionIndex);
+                }
                 
-                // 构建提示词，让大模型基于简历内容生成问题
-                String prompt = String.format(
-                    "你是一位专业的 %s 岗位面试官，正在对候选人进行面试。\n" +
-                    "以下是候选人的简历内容：\n---\n%s\n---\n\n" +
-                    "之前的面试对话历史：\n---\n%s\n---\n\n" +
-                    "这是面试的第 %d 题（共 10 题围绕简历的提问，题号从 1 到 10）。\n" +
-                    "请根据以下规则生成问题：\n" +
-                    "1. 如果简历中有实习经历、项目经历或其他实践内容，请针对这些内容使用 STAR 法则（Situation 情境、Task 任务、Action 行动、Result 结果）进行提问。\n" +
-                    "2. 如果简历中没有明显的实践经历，请使用行为面试法，通过假设性提问来考察候选人的能力。\n" +
-                    "3. 如果之前已经有过相关提问，请避免重复，可以从不同角度深入追问。\n" +
-                    "4. 问题应该具体、有针对性，能够考察候选人的实际能力和经验。\n" +
-                    "5. 第 1-3 题可以侧重基本情况了解，第 4-7 题深入具体项目，第 8-10 题可以进行行为面试或追问。\n\n" +
-                    "请直接返回问题内容，不要有任何前缀说明。");
-                
-                String questionContent = llmService.simpleChat(prompt, 
-                    "你是一位专业的面试官，擅长使用 STAR 法则和行为面试法进行面试。");
-                
-                if (questionContent != null && !questionContent.trim().isEmpty()) {
-                    Question q = new Question();
-                    q.setPositionId(session.getPositionId());
-                    q.setCategory("简历相关");
-                    q.setContent(questionContent.trim());
-                    q.setDifficultyLevel(2 + (questionIndex - 1) / 3); // 难度递增
-                    return q;
+            } catch (Exception e) {
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                    log.error("[简历问题] 生成被中断 - 会话 ID: {}", session.getId(), e);
+                    return getBehavioralQuestion(session, positionName, questionIndex);
+                }
+                retryCount++;
+                if (retryCount > maxRetries) {
+                    log.error("[简历问题] 生成失败，使用备用方案 - 会话 ID: {}, 错误：{}", 
+                        session.getId(), e.getMessage(), e);
+                } else {
+                    log.warn("[简历问题] 生成失败，{} 秒后重试 ({}/{}) - 错误：{}", 
+                        2 * retryCount, retryCount, maxRetries, e.getMessage());
+                    try {
+                        Thread.sleep(2000 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return getBehavioralQuestion(session, positionName, questionIndex);
+                    }
                 }
             }
-            
-            // 如果简历解析失败或内容为空，使用备用方案
-            return getBehavioralQuestion(session, positionName, questionIndex);
-            
-        } catch (Exception e) {
-            log.error("生成简历相关问题失败", e);
-            return getBehavioralQuestion(session, positionName, questionIndex);
         }
+        
+        // 所有重试失败，使用备用方案
+        return getBehavioralQuestion(session, positionName, questionIndex);
     }
     
     /**
