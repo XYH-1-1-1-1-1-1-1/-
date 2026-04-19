@@ -1697,12 +1697,6 @@
                             <span id="interviewPosition">岗位：后端开发工程师</span>
                             <span id="interviewModeBadge" class="mode-badge practice">📝 练习模式</span>
                         </div>
-                        <div class="progress-section">
-                            <span id="interviewProgress" class="progress-text">进度：1/10</span>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="progressFill" style="width: 10%;"></div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- New Split Layout -->
@@ -2626,10 +2620,15 @@
         function showNextQuestion(question) {
             const totalQuestions = currentSession.totalQuestions || 18;
 
-            document.getElementById('interviewProgress').textContent =
-                `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
-            document.getElementById('progressFill').style.width =
-                `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+            // 更新进度条（如果元素存在）
+            const progressEl = document.getElementById('interviewProgress');
+            const progressFillEl = document.getElementById('progressFill');
+            if (progressEl) {
+                progressEl.textContent = `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
+            }
+            if (progressFillEl) {
+                progressFillEl.style.width = `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+            }
 
             disableSkipButton();
             showTypingIndicator('🤖 AI 面试官');
@@ -2642,28 +2641,76 @@
             }, 500);
         }
 
-        function loadQuestion() {
+        async function loadQuestion() {
             const totalQuestions = currentSession.totalQuestions || 10;
 
             if (currentQuestionIndex < totalQuestions) {
-                document.getElementById('interviewProgress').textContent =
-                    `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
-                document.getElementById('progressFill').style.width =
-                    `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+                // 更新进度条（如果元素存在）
+                const progressEl = document.getElementById('interviewProgress');
+                const progressFillEl = document.getElementById('progressFill');
+                if (progressEl) {
+                    progressEl.textContent = `进度：${currentQuestionIndex + 1}/${totalQuestions}`;
+                }
+                if (progressFillEl) {
+                    progressFillEl.style.width = `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
+                }
 
                 disableSkipButton();
                 showTypingIndicator('🤖 AI 面试官');
 
                 if (currentSession && currentSession.interviewMode === 'REAL') {
-                    setTimeout(() => {
-                        hideTypingIndicator();
-                        if (currentQuestionIndex === 0) {
-                            addMessageWithTyping('您好，请先做一个简短的自我介绍吧。', `🤖 AI 面试官 · 问题 1`, () => {
+                    // 真实面试模式：从后端 API 获取问题（结合简历生成）
+                    try {
+                        const resp = await fetch(API_BASE + `/interview/${currentSession.id}/question/${currentQuestionIndex}`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await resp.json();
+                        
+                        setTimeout(() => {
+                            hideTypingIndicator();
+                            let questionText = '';
+                            if (data.code === 200 && data.data && data.data.content) {
+                                // 从后端获取到问题内容
+                                questionText = data.data.content;
+                            } else {
+                                // API 调用失败时使用备用文本
+                                if (currentQuestionIndex === 0) {
+                                    questionText = '您好，请先做一个简短的自我介绍吧。';
+                                } else if (currentQuestionIndex >= 1 && currentQuestionIndex <= 10) {
+                                    questionText = '请结合您的简历经历，详细回答这个问题。';
+                                } else if (currentQuestionIndex >= 11 && currentQuestionIndex <= 15) {
+                                    questionText = '请回答下一个专业问题。';
+                                } else {
+                                    questionText = '请回答下一个问题。';
+                                }
+                            }
+                            addMessageWithTyping(questionText, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`, () => {
                                 enableSkipButton();
                             });
-                        }
-                    }, 500);
+                        }, 500);
+                    } catch (e) {
+                        console.error('获取问题失败:', e);
+                        setTimeout(() => {
+                            hideTypingIndicator();
+                            // API 调用失败时使用备用文本
+                            let questionText = '';
+                            if (currentQuestionIndex === 0) {
+                                questionText = '您好，请先做一个简短的自我介绍吧。';
+                            } else if (currentQuestionIndex >= 1 && currentQuestionIndex <= 10) {
+                                questionText = '请结合您的简历经历，详细回答这个问题。';
+                            } else if (currentQuestionIndex >= 11 && currentQuestionIndex <= 15) {
+                                questionText = '请回答下一个专业问题。';
+                            } else {
+                                questionText = '请回答下一个问题。';
+                            }
+                            addMessageWithTyping(questionText, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`, () => {
+                                enableSkipButton();
+                            });
+                        }, 500);
+                    }
                 } else {
+                    // 练习模式：从本地题库获取问题
                     const positionQuestions = getPositionQuestions();
                     setTimeout(() => {
                         hideTypingIndicator();
