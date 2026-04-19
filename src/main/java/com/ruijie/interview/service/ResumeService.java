@@ -2,6 +2,8 @@ package com.ruijie.interview.service;
 
 import com.ruijie.interview.entity.Resume;
 import com.ruijie.interview.repository.ResumeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,15 @@ import java.util.UUID;
 
 /**
  * 简历服务类
+ * 
+ * 缓存机制说明：
+ * - 用户上传简历时，立即解析 PDF 内容并存储到数据库的 parsedContent 字段
+ * - 后续获取简历内容时，优先从缓存读取，避免重复解析 PDF
  */
 @Service
 public class ResumeService {
+
+    private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
 
     @Autowired
     private ResumeRepository resumeRepository;
@@ -34,6 +42,7 @@ public class ResumeService {
 
     /**
      * 上传简历
+     * 上传时立即解析 PDF 内容并缓存到数据库
      */
     @Transactional
     public Resume uploadResume(Long userId, MultipartFile file) throws IOException {
@@ -78,7 +87,22 @@ public class ResumeService {
         resume.setFileSize(file.getSize());
         resume.setContentType(contentType);
 
-        return resumeRepository.save(resume);
+        // 先保存简历记录获取 ID
+        Resume savedResume = resumeRepository.save(resume);
+
+        // 立即解析 PDF 内容并缓存
+        try {
+            log.info("[简历缓存] 开始解析并缓存简历内容 - 用户 ID: {}, 文件：{}", userId, filePath);
+            String parsedContent = pdfResumeParser.parsePdfContent(filePath.toString());
+            resumeRepository.updateParsedContent(savedResume.getId(), parsedContent);
+            savedResume.setParsedContent(parsedContent);
+            log.info("[简历缓存] 简历内容缓存成功 - 用户 ID: {}, 字符数：{}", userId, parsedContent.length());
+        } catch (Exception e) {
+            log.warn("[简历缓存] 简历解析失败，但保留文件记录 - 用户 ID: {}, 错误：{}", userId, e.getMessage());
+            // 解析失败不影响简历上传，只是没有缓存内容
+        }
+
+        return savedResume;
     }
 
     /**
@@ -137,12 +161,32 @@ public class ResumeService {
     /**
      * 获取并解析用户的简历内容
      * 
-     * @param userId 用户ID
+     * @param userId 用户 ID
      * @return 解析后的简历文本内容
      */
     public Optional<String> getUserResumeContent(Long userId) {
-        return getUserResume(userId).map(resume -> 
-            pdfResumeParser.parsePdfContent(resume.getFilePath())
-        );
+        // 首先尝试从缓存获取
+        String cachedContent = resumeRepository.findParsedContentByUserId(userId);
+        if (cachedContent != null && !cachedContent.trim().isEmpty()) {
+            log.info("[简历缓存] 从缓存获取简历内容 - 用户 ID: {}, 字符数：{}", userId, cachedContent.length());
+            return Optional.of(cachedContent);
+        }
+        
+        // 缓存未命中或为空，从文件解析并更新缓存
+        log.info("[简历缓存] 缓存未命中，从文件解析 - 用户 ID: {}", userId);
+        Optional<Resume> resumeOpt = getUserResume(userId);
+        if (resumeOpt.isPresent()) {
+            Resume resume = resumeOpt.get();
+            try {
+                String parsedContent = pdfResumeParser.parsePdfContent(resume.getFilePath());
+                // 更新缓存
+                resumeRepository.updateParsedContent(resume.getId(), parsedContent);
+                log.info("[简历缓存] 文件解析成功并更新缓存 - 用户 ID: {}, 字符数：{}", userId, parsedContent.length());
+                return Optional.of(parsedContent);
+            } catch (Exception e) {
+                log.error("[简历缓存] 文件解析失败 - 用户 ID: {}, 错误：{}", userId, e.getMessage());
+            }
+        }
+        return Optional.empty();
     }
 }

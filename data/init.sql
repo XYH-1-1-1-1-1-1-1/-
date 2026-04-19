@@ -137,7 +137,8 @@ CREATE TABLE IF NOT EXISTS resumes (
     file_content BLOB,
     content_type VARCHAR(100),
     uploaded_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
+    updated_at DATETIME NOT NULL,
+    parsed_content TEXT
 );
 
 -- ============================================

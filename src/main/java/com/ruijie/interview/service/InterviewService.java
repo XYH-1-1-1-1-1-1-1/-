@@ -950,24 +950,36 @@ public class InterviewService {
                     String conversationHistory = session.getConversationHistory();
                     
                     // 构建提示词，让大模型基于简历内容生成问题
-                    String prompt = String.format(
-                        "你是一位专业的 %s 岗位面试官，正在对候选人进行面试。\n" +
-                        "以下是候选人的简历内容：\n---\n%s\n---\n\n" +
-                        "之前的面试对话历史：\n---\n%s\n---\n\n" +
-                        "这是面试的第 %d 题（共 10 题围绕简历的提问，题号从 1 到 10）。\n" +
-                        "请根据以下规则生成问题：\n" +
-                        "1. 如果简历中有实习经历、项目经历或其他实践内容，请针对这些内容使用 STAR 法则（Situation 情境、Task 任务、Action 行动、Result 结果）进行提问。\n" +
-                        "2. 如果简历中没有明显的实践经历，请使用行为面试法，通过假设性提问来考察候选人的能力。\n" +
-                        "3. 如果之前已经有过相关提问，请避免重复，可以从不同角度深入追问。\n" +
-                        "4. 问题应该具体、有针对性，能够考察候选人的实际能力和经验。\n" +
-                        "5. 第 1-3 题可以侧重基本情况了解，第 4-7 题深入具体项目，第 8-10 题可以进行行为面试或追问。\n\n" +
-                        "请直接返回问题内容，不要有任何前缀说明。");
+                    // 使用文本块和字符串拼接，避免 String.format 中 % 字符导致的异常
+                    StringBuilder promptBuilder = new StringBuilder();
+                    promptBuilder.append("你是一位专业的 ").append(positionName).append(" 岗位面试官，正在对候选人进行面试。\n\n");
+                    promptBuilder.append("以下是候选人的简历内容：\n");
+                    promptBuilder.append("========================================\n");
+                    promptBuilder.append(resumeContent);
+                    promptBuilder.append("\n========================================\n\n");
+                    promptBuilder.append("之前的面试对话历史：\n");
+                    promptBuilder.append("========================================\n");
+                    promptBuilder.append(conversationHistory != null ? conversationHistory : "(暂无对话历史)");
+                    promptBuilder.append("\n========================================\n\n");
+                    promptBuilder.append("这是面试的第 ").append(questionIndex).append(" 题（共 10 题围绕简历的提问，题号从 1 到 10）。\n\n");
+                    promptBuilder.append("请根据以下规则生成问题：\n");
+                    promptBuilder.append("1. 如果简历中有实习经历、项目经历或其他实践内容，请针对这些内容使用 STAR 法则（Situation 情境、Task 任务、Action 行动、Result 结果）进行提问。\n");
+                    promptBuilder.append("2. 如果简历中没有明显的实践经历，请使用行为面试法，通过假设性提问来考察候选人的能力。\n");
+                    promptBuilder.append("3. 如果之前已经有过相关提问，请避免重复，可以从不同角度深入追问。\n");
+                    promptBuilder.append("4. 问题应该具体、有针对性，能够考察候选人的实际能力和经验。\n");
+                    promptBuilder.append("5. 第 1-3 题可以侧重基本情况了解，第 4-7 题深入具体项目，第 8-10 题可以进行行为面试或追问。\n\n");
+                    promptBuilder.append("请直接返回问题内容，不要有任何前缀说明。");
                     
-                    log.info("[简历问题] 开始生成问题 (重试 {}/{}) - 会话 ID: {}, 用户 ID: {}", 
-                        retryCount, maxRetries, session.getId(), session.getUserId());
+                    String prompt = promptBuilder.toString();
+                    
+                    log.info("[简历问题] 开始生成问题 (重试 {}/{}) - 会话 ID: {}, 用户 ID: {}, 简历字符数：{}", 
+                        retryCount, maxRetries, session.getId(), session.getUserId(), resumeContent.length());
                     
                     String questionContent = llmService.simpleChat(prompt, 
                         "你是一位专业的面试官，擅长使用 STAR 法则和行为面试法进行面试。");
+                    
+                    log.info("[简历问题] LLM 返回内容长度：{}", 
+                        questionContent != null ? questionContent.length() : 0);
                     
                     if (questionContent != null && !questionContent.trim().isEmpty()) {
                         Question q = new Question();

@@ -38,6 +38,13 @@ public class Resume {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    /**
+     * 解析后的简历文本内容（缓存）
+     * 用于避免每次提问时重新解析 PDF
+     */
+    @Column(columnDefinition = "LONGTEXT")
+    private String parsedContent;
+
     @PrePersist
     protected void onCreate() {
         uploadedAt = LocalDateTime.now();
@@ -120,5 +127,13 @@ public class Resume {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getParsedContent() {
+        return parsedContent;
+    }
+
+    public void setParsedContent(String parsedContent) {
+        this.parsedContent = parsedContent;
     }
 }
