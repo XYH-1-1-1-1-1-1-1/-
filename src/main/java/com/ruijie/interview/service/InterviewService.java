@@ -1435,23 +1435,4 @@ public class InterviewService {
             this.report = report;
         }
     }
-    
-    /**
-     * 获取真实面试模式下的问题（供 Controller 调用）
-     * @param sessionId 面试会话 ID
-     * @param questionIndex 问题索引（从 0 开始）
-     * @return 问题对象
-     */
-    public Question getQuestionForRealInterview(Long sessionId, int questionIndex) {
-        InterviewSession session = sessionRepository.findById(sessionId)
-            .orElseThrow(() -> new RuntimeException("会话不存在：" + sessionId));
-        
-        if (!"REAL".equals(session.getInterviewMode())) {
-            // 非真实面试模式，返回练习模式问题
-            return getNextQuestion(session, questionIndex);
-        }
-        
-        // 真实面试模式，使用真实面试出题逻辑
-        return getRealInterviewQuestion(session, questionIndex);
-    }
 }
