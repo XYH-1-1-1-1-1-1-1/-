@@ -8,58 +8,99 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* iOS 风格马卡龙色系 */
-            --macaron-blue: #B8D4E8;
-            --macaron-blue-dark: #7FB3D5;
-            --macaron-purple: #D4C4E8;
-            --macaron-purple-dark: #A992C9;
-            --macaron-pink: #F4C8D8;
-            --macaron-pink-dark: #E8A8B8;
-            --macaron-green: #C8E8D4;
-            --macaron-green-dark: #92C9A9;
-            --macaron-yellow: #F8E8C8;
-            --macaron-yellow-dark: #E8C892;
-            --macaron-orange: #F8D4C8;
-            --macaron-orange-dark: #E8A892;
-            
-            /* iOS 风格中性色 */
-            --bg-primary: #F2F2F7;
+            /* 现代商务科技风 - 主色调：浅蓝/淡靛青 */
+            --primary-blue: #3B82F6;
+            --primary-blue-light: #60A5FA;
+            --primary-indigo: #818CF8;
+            --primary-indigo-light: #A5B4FC;
+            --primary-slate: #64748B;
+            --primary-slate-light: #94A3B8;
+
+            /* 辅助色 */
+            --accent-blue: #0EA5E9;
+            --accent-blue-light: #38BDF8;
+            --accent-cyan: #06B6D4;
+            --accent-teal: #14B8A6;
+
+            /* 功能色 - 商务风格 */
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --success-dark: #059669;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --warning-dark: #D97706;
+            --error: #EF4444;
+            --error-light: #FEE2E2;
+            --error-dark: #DC2626;
+
+            /* 中性色 - 浅色模式 */
+            --bg-primary: #F8FAFC;
             --bg-secondary: #FFFFFF;
-            --bg-tertiary: #E5E5EA;
-            --text-primary: #1C1C1E;
-            --text-secondary: #6C6C70;
-            --text-tertiary: #98989D;
-            --border-light: #E5E5EA;
-            --border-medium: #D1D1D6;
+            --bg-tertiary: #F1F5F9;
+            --bg-elevated: #FFFFFF;
+            --text-primary: #0F172A;
+            --text-secondary: #475569;
+            --text-tertiary: #94A3B8;
+            --text-inverse: #FFFFFF;
+            --border-light: #E2E8F0;
+            --border-medium: #CBD5E1;
+            --border-dark: #94A3B8;
+
+            /* 阴影效果 - 现代商务风格，更有层次感 */
+            --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+            --shadow-2xl: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            --shadow-glow: 0 0 24px rgba(79, 70, 229, 0.3);
+            --shadow-glow-blue: 0 0 24px rgba(30, 58, 95, 0.25);
+            --shadow-float: 0 20px 40px -8px rgba(15, 23, 42, 0.15), 0 10px 24px -4px rgba(15, 23, 42, 0.1);
+            --shadow-inner: inset 0 2px 4px 0 rgba(15, 23, 42, 0.05);
             
-            /* 功能色 */
-            --success: #34C759;
-            --success-light: #E8F8ED;
-            --warning: #FF9500;
-            --warning-light: #FFF8F0;
-            --error: #FF3B30;
-            --error-light: #FFF0F0;
-            
-            /* iOS 风格阴影 - 更柔和、更弥散 */
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
-            --shadow-xl: 0 12px 48px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.07);
-            --shadow-glow: 0 0 24px rgba(127, 179, 213, 0.35);
-            --shadow-float: 0 16px 64px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08);
-            
-            /* iOS 风格大圆角 - Superellipse 风格 */
-            --radius-sm: 14px;
-            --radius-md: 18px;
-            --radius-lg: 24px;
-            --radius-xl: 32px;
-            --radius-2xl: 40px;
+            /* 圆角设计 - 干练商务风格 */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-2xl: 20px;
             --radius-full: 9999px;
             
-            /* iOS 风格过渡动画 */
-            --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            /* 过渡动画 - 专业流畅 */
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* 暗黑模式支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* 中性色 - 暗黑模式 */
+                --bg-primary: #0F172A;
+                --bg-secondary: #1E293B;
+                --bg-tertiary: #334155;
+                --bg-elevated: #1E293B;
+                --text-primary: #F8FAFC;
+                --text-secondary: #CBD5E1;
+                --text-tertiary: #64748B;
+                --text-inverse: #0F172A;
+                --border-light: #334155;
+                --border-medium: #475569;
+                --border-dark: #64748B;
+                
+                /* 功能色 - 暗黑模式调整 */
+                --success-light: rgba(16, 185, 129, 0.15);
+                --warning-light: rgba(245, 158, 11, 0.15);
+                --error-light: rgba(239, 68, 68, 0.15);
+                
+                /* 阴影效果 - 暗黑模式 */
+                --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+                --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+                --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+                --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+                --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+                --shadow-float: 0 20px 40px -8px rgba(0, 0, 0, 0.5), 0 10px 24px -4px rgba(0, 0, 0, 0.4);
+                --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+            }
         }
 
         * {
@@ -70,7 +111,7 @@
 
         body {
             font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #F2F2F7 0%, #E5E5EA 100%);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
             min-height: 100vh;
             color: var(--text-primary);
             line-height: 1.6;
@@ -111,8 +152,8 @@
         .logo {
             width: 48px;
             height: 48px;
-            background: linear-gradient(135deg, var(--macaron-blue) 0%, var(--macaron-purple) 100%);
-            border-radius: var(--radius-xl);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
+            border-radius: var(--radius-lg);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -199,9 +240,9 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--macaron-blue-dark);
+            border-color: var(--primary-indigo);
             background: var(--bg-secondary);
-            box-shadow: 0 0 0 6px rgba(127, 179, 213, 0.12);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
             transform: translateY(-1px);
         }
 
@@ -226,14 +267,14 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--macaron-blue-dark) 0%, var(--macaron-purple-dark) 100%);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             color: white;
-            box-shadow: 0 4px 16px rgba(127, 179, 213, 0.35);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
         }
 
         .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 6px 24px rgba(127, 179, 213, 0.45);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
         }
 
         .btn-primary:active {
@@ -266,7 +307,7 @@
         }
 
         .auth-switch a {
-            color: var(--macaron-blue-dark);
+            color: var(--primary-indigo);
             cursor: pointer;
             text-decoration: none;
             font-weight: 500;
@@ -373,17 +414,17 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--macaron-blue) 0%, var(--macaron-purple) 100%);
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             transform: scaleX(0);
             transition: transform var(--transition-slow);
-            border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         }
 
         .position-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-4px);
             box-shadow: var(--shadow-float);
-            border-color: var(--macaron-blue);
+            border-color: var(--primary-indigo-light);
         }
 
         .position-card:hover::before {
@@ -421,8 +462,8 @@
         }
 
         .position-card:hover .tag {
-            background: var(--macaron-blue);
-            color: var(--text-primary);
+            background: var(--primary-indigo);
+            color: var(--text-inverse);
         }
 
         /* ==================== Mode Selection ==================== */
@@ -459,16 +500,22 @@
         }
 
         .mode-option:hover {
-            border-color: var(--macaron-blue);
-            background: rgba(184, 212, 232, 0.3);
-            transform: scale(1.02);
+            border-color: var(--primary-indigo);
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
         }
 
         .mode-option.selected {
-            border-color: var(--macaron-blue-dark);
-            background: linear-gradient(135deg, var(--macaron-blue) 0%, var(--macaron-purple) 100%);
+            border-color: var(--primary-indigo);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             box-shadow: var(--shadow-glow);
-            transform: scale(1.03);
+            transform: translateY(-2px);
+        }
+
+        .mode-option.selected .icon,
+        .mode-option.selected h4,
+        .mode-option.selected p {
+            color: white;
         }
 
         .mode-option .icon {
@@ -538,13 +585,13 @@
         }
 
         .mode-badge.practice {
-            background: var(--macaron-green);
-            color: var(--text-primary);
+            background: var(--success-light);
+            color: var(--success-dark);
         }
 
         .mode-badge.real {
-            background: var(--macaron-purple);
-            color: var(--text-primary);
+            background: var(--primary-indigo-light);
+            color: white;
         }
 
         .progress-section {
@@ -569,9 +616,9 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--macaron-blue-dark) 0%, var(--macaron-purple-dark) 100%);
+            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             border-radius: var(--radius-full);
-            transition: width var(--transition-slow);
+            transition: width var(--transition-base);
         }
 
         /* ==================== Chat Container ==================== */
@@ -636,10 +683,10 @@
 
         .message.user {
             align-self: flex-end;
-            background: linear-gradient(135deg, var(--macaron-blue-dark) 0%, var(--macaron-purple-dark) 100%);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             color: white;
             border-bottom-right-radius: var(--radius-md);
-            box-shadow: 0 4px 16px rgba(127, 179, 213, 0.3);
+            box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
         }
 
         .message.user .message-header {
@@ -673,8 +720,8 @@
         }
 
         .real-mode-answer-area {
-            background: var(--macaron-purple);
-            border-radius: var(--radius-2xl);
+            background: var(--primary-indigo-light);
+            border-radius: var(--radius-xl);
             padding: 20px;
             margin-bottom: 12px;
         }
@@ -720,9 +767,9 @@
 
         .answer-area:focus {
             outline: none;
-            border-color: var(--macaron-blue-dark);
+            border-color: var(--primary-indigo);
             background: var(--bg-secondary);
-            box-shadow: 0 0 0 6px rgba(127, 179, 213, 0.12);
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
             transform: translateY(-1px);
         }
 
@@ -739,17 +786,17 @@
         }
 
         .voice-btn.recording {
-            background: linear-gradient(135deg, #E8A8B8 0%, #E89292 100%);
+            background: linear-gradient(135deg, var(--error) 0%, var(--error-dark) 100%);
             animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { 
-                box-shadow: 0 0 0 0 rgba(232, 168, 184, 0.5);
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
                 transform: scale(1);
             }
-            50% { 
-                box-shadow: 0 0 0 16px rgba(232, 168, 184, 0);
+            50% {
+                box-shadow: 0 0 0 16px rgba(239, 68, 68, 0);
                 transform: scale(1.05);
             }
         }
@@ -767,8 +814,8 @@
         }
 
         .btn-exit {
-            background: linear-gradient(135deg, var(--macaron-orange) 0%, var(--macaron-pink) 100%);
-            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--primary-slate) 0%, var(--primary-slate-light) 100%);
+            color: white;
         }
 
         /* ==================== Typing Indicator ==================== */
@@ -781,7 +828,7 @@
         .typing-indicator span {
             width: 8px;
             height: 8px;
-            background: var(--macaron-blue-dark);
+            background: var(--primary-indigo);
             border-radius: 50%;
             animation: typing 1.4s infinite;
         }
@@ -888,46 +935,154 @@
             font-size: 24px;
             font-weight: 600;
             color: var(--text-primary);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .report-subtitle {
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 14px;
             margin-bottom: 32px;
-            text-align: center;
         }
 
-        .score-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 16px;
+        /* 雷达图容器 */
+        .radar-chart-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
             margin: 32px 0;
-        }
-
-        .score-item {
-            text-align: center;
-            padding: 28px 18px;
+            padding: 24px;
             background: var(--bg-tertiary);
             border-radius: var(--radius-2xl);
-            transition: all var(--transition-base);
             border: 1px solid var(--border-light);
         }
 
-        .score-item:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-float);
-            border-color: var(--macaron-blue);
+        /* SVG 雷达图 */
+        .radar-chart {
+            width: 280px;
+            height: 280px;
         }
 
-        .score-value {
-            font-size: 32px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--macaron-blue-dark) 0%, var(--macaron-purple-dark) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .radar-chart .grid-line {
+            stroke: var(--border-medium);
+            stroke-width: 1;
+            fill: none;
         }
 
-        .score-label {
-            color: var(--text-tertiary);
+        .radar-chart .axis-line {
+            stroke: var(--border-light);
+            stroke-width: 1;
+        }
+
+        .radar-chart .radar-area {
+            fill: rgba(79, 70, 229, 0.3);
+            stroke: var(--primary-indigo);
+            stroke-width: 2;
+        }
+
+        .radar-chart .radar-point {
+            fill: var(--primary-indigo);
+            stroke: var(--bg-secondary);
+            stroke-width: 2;
+        }
+
+        .radar-chart .axis-label {
+            font-size: 12px;
+            fill: var(--text-secondary);
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+
+        /* 评分详情 */
+        .score-details {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 200px;
+        }
+
+        .score-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .score-detail-label {
             font-size: 13px;
+            color: var(--text-secondary);
+            width: 80px;
+        }
+
+        .score-detail-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--border-medium);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .score-detail-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+        }
+
+        .score-detail-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            width: 36px;
+            text-align: right;
+        }
+
+        /* 综合评分卡片 */
+        .overall-score-card {
+            display: flex;
+            justify-content: center;
+            margin: 24px 0;
+        }
+
+        .overall-score-box {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
+            border-radius: var(--radius-2xl);
+            padding: 24px 48px;
+            text-align: center;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .overall-score-value {
+            font-size: 56px;
+            font-weight: 700;
+            color: white;
+            line-height: 1;
+        }
+
+        .overall-score-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
             margin-top: 8px;
-            font-weight: 500;
+        }
+
+        /* 体检单样式区域 */
+        .report-section {
+            margin: 24px 0;
+            padding: 26px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-2xl);
+            border: 1px solid var(--border-light);
+        }
+
+        .report-section h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .report-section {
@@ -968,8 +1123,9 @@
 
         .report-section li::before {
             content: '•';
-            color: var(--macaron-blue-dark);
+            color: var(--primary-indigo);
             font-weight: bold;
+            font-size: 18px;
         }
 
         /* ==================== History Section ==================== */
@@ -1010,10 +1166,10 @@
         }
 
         .filter-btn.active {
-            background: linear-gradient(135deg, var(--macaron-blue) 0%, var(--macaron-purple) 100%);
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
             border-color: transparent;
-            color: var(--text-primary);
-            box-shadow: 0 2px 12px rgba(127, 179, 213, 0.3);
+            color: white;
+            box-shadow: 0 2px 12px rgba(79, 70, 229, 0.3);
         }
 
         .history-list {
@@ -1035,7 +1191,7 @@
         }
 
         .history-item:hover {
-            border-color: var(--macaron-blue);
+            border-color: var(--primary-indigo);
             box-shadow: var(--shadow-md);
             transform: translateX(6px);
         }
@@ -1062,13 +1218,13 @@
         }
 
         .history-mode.practice {
-            background: var(--macaron-green);
-            color: var(--text-primary);
+            background: var(--success-light);
+            color: var(--success-dark);
         }
 
         .history-mode.real {
-            background: var(--macaron-purple);
-            color: var(--text-primary);
+            background: var(--primary-indigo-light);
+            color: white;
         }
 
         .history-info p {
@@ -1080,27 +1236,27 @@
         .history-score {
             font-size: 20px;
             font-weight: 700;
-            color: var(--macaron-blue-dark);
+            color: var(--primary-indigo);
             margin-right: 20px;
         }
 
         .btn-delete {
             padding: 10px 18px;
-            background: linear-gradient(135deg, var(--macaron-pink) 0%, var(--macaron-orange) 100%);
+            background: linear-gradient(135deg, var(--error) 0%, var(--error-dark) 100%);
             border: none;
-            border-radius: var(--radius-xl);
-            color: var(--text-primary);
+            border-radius: var(--radius-lg);
+            color: white;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
             transition: all var(--transition-base);
-            box-shadow: 0 2px 8px rgba(232, 168, 184, 0.3);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
         }
 
         .btn-delete:hover {
             opacity: 0.9;
-            transform: scale(1.08);
-            box-shadow: 0 4px 16px rgba(232, 168, 184, 0.4);
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
         }
 
         .back-btn {
@@ -1144,13 +1300,13 @@
 
         .resume-status {
             padding: 20px;
-            background: var(--macaron-blue);
-            border-radius: var(--radius-2xl);
+            background: var(--primary-indigo-light);
+            border-radius: var(--radius-xl);
             margin-top: 16px;
         }
 
         .resume-status p {
-            color: var(--text-primary);
+            color: white;
             margin-bottom: 8px;
             font-weight: 500;
         }
@@ -1188,11 +1344,11 @@
         }
 
         .toast.success {
-            background: linear-gradient(135deg, var(--macaron-green-dark) 0%, var(--macaron-green) 100%);
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-dark) 100%);
         }
 
         .toast.error {
-            background: linear-gradient(135deg, var(--macaron-pink-dark) 0%, var(--macaron-pink) 100%);
+            background: linear-gradient(135deg, var(--error) 0%, var(--error-dark) 100%);
         }
 
         @keyframes slideIn {
@@ -1430,8 +1586,8 @@
                         <svg class="progress-ring" width="140" height="140">
                             <defs>
                                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#7FB3D5"/>
-                                    <stop offset="100%" stop-color="#A992C9"/>
+                                    <stop offset="0%" stop-color="#1E3A5F"/>
+                                    <stop offset="100%" stop-color="#4F46E5"/>
                                 </linearGradient>
                             </defs>
                             <circle class="bg" cx="70" cy="70" r="60"></circle>
@@ -1453,7 +1609,93 @@
 
                 <div id="interviewResult" class="report-container hidden">
                     <h2>面试评估报告</h2>
-                    <div class="score-grid" id="scoreGrid"></div>
+                    <p class="report-subtitle">面试能力维度分析</p>
+
+                    <!-- 综合评分卡片 -->
+                    <div class="overall-score-card">
+                        <div class="overall-score-box">
+                            <div class="overall-score-value" id="overallScoreValue">72</div>
+                            <div class="overall-score-label">综合评分</div>
+                        </div>
+                    </div>
+
+                    <!-- 雷达图容器 -->
+                    <div class="radar-chart-container">
+                        <!-- SVG 雷达图 -->
+                        <svg class="radar-chart" viewBox="0 0 280 280">
+                            <!-- 背景网格 - 正五边形 (中心 140,140, 半径 100) -->
+                            <!-- 外层 (100%) -->
+                            <polygon class="grid-line" points="140,40 235.1,109.1 198.8,220.9 81.2,220.9 44.9,109.1"/>
+                            <!-- 中层 (66.7%) -->
+                            <polygon class="grid-line" points="140,73.3 203.4,119.4 179.2,193.9 100.8,193.9 76.6,119.4"/>
+                            <!-- 内层 (33.3%) -->
+                            <polygon class="grid-line" points="140,106.7 171.7,129.7 159.6,167 120.4,167 108.3,129.7"/>
+
+                            <!-- 轴线 -->
+                            <line class="axis-line" x1="140" y1="40" x2="140" y2="240"/>
+                            <line class="axis-line" x1="223.3" y1="100.4" x2="56.7" y2="180.4"/>
+                            <line class="axis-line" x1="191.4" y1="199.6" x2="88.6" y2="80.4"/>
+                            <line class="axis-line" x1="88.6" y1="199.6" x2="191.4" y2="80.4"/>
+                            <line class="axis-line" x1="56.7" y1="100.4" x2="223.3" y2="180.4"/>
+
+                            <!-- 雷达图区域 -->
+                            <polygon class="radar-area" id="radarArea" points=""/>
+
+                            <!-- 数据点 -->
+                            <circle class="radar-point" id="point1" cx="140" cy="40" r="4"/>
+                            <circle class="radar-point" id="point2" cx="223.3" cy="100.4" r="4"/>
+                            <circle class="radar-point" id="point3" cx="191.4" cy="199.6" r="4"/>
+                            <circle class="radar-point" id="point4" cx="88.6" cy="199.6" r="4"/>
+                            <circle class="radar-point" id="point5" cx="56.7" cy="100.4" r="4"/>
+
+                            <!-- 轴标签 -->
+                            <text class="axis-label" x="140" y="28">技术能力</text>
+                            <text class="axis-label" x="235" y="100">沟通能力</text>
+                            <text class="axis-label" x="203" y="212">逻辑思维</text>
+                            <text class="axis-label" x="77" y="212">应变能力</text>
+                            <text class="axis-label" x="45" y="100">岗位匹配</text>
+                        </svg>
+
+                        <!-- 评分详情 -->
+                        <div class="score-details">
+                            <div class="score-detail-item">
+                                <span class="score-detail-label">技术能力</span>
+                                <div class="score-detail-bar">
+                                    <div class="score-detail-fill" id="bar1" style="width: 0%"></div>
+                                </div>
+                                <span class="score-detail-value" id="value1">0</span>
+                            </div>
+                            <div class="score-detail-item">
+                                <span class="score-detail-label">沟通能力</span>
+                                <div class="score-detail-bar">
+                                    <div class="score-detail-fill" id="bar2" style="width: 0%"></div>
+                                </div>
+                                <span class="score-detail-value" id="value2">0</span>
+                            </div>
+                            <div class="score-detail-item">
+                                <span class="score-detail-label">逻辑思维</span>
+                                <div class="score-detail-bar">
+                                    <div class="score-detail-fill" id="bar3" style="width: 0%"></div>
+                                </div>
+                                <span class="score-detail-value" id="value3">0</span>
+                            </div>
+                            <div class="score-detail-item">
+                                <span class="score-detail-label">应变能力</span>
+                                <div class="score-detail-bar">
+                                    <div class="score-detail-fill" id="bar4" style="width: 0%"></div>
+                                </div>
+                                <span class="score-detail-value" id="value4">0</span>
+                            </div>
+                            <div class="score-detail-item">
+                                <span class="score-detail-label">岗位匹配</span>
+                                <div class="score-detail-bar">
+                                    <div class="score-detail-fill" id="bar5" style="width: 0%"></div>
+                                </div>
+                                <span class="score-detail-value" id="value5">0</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="report-section">
                         <h4>✨ 亮点分析</h4>
                         <ul id="strengthsList"></ul>
@@ -2006,10 +2248,16 @@
                     addMessage('system', '🎉 面试已开始，祝你好运！');
 
                     setTimeout(() => {
-                        addMessage('ai', `你好！我是今天的 AI 面试官。很高兴能和你交流。${currentMode === 'REAL' ? '我们将从自我介绍开始，然后围绕你的简历经历进行提问。' : '我们将从专业问题开始面试，'}请认真回答每个问题。`, '🤖 AI 面试官 · 开场白');
+                        showTypingIndicator('🤖 AI 面试官');
                         setTimeout(() => {
-                            loadQuestion();
-                        }, 1500);
+                            hideTypingIndicator();
+                            const openingMessage = `你好！我是今天的 AI 面试官。很高兴能和你交流。${currentMode === 'REAL' ? '我们将从自我介绍开始，然后围绕你的简历经历进行提问。' : '我们将从专业问题开始面试，'}请认真回答每个问题。`;
+                            addMessageWithTyping(openingMessage, '🤖 AI 面试官 · 开场白', () => {
+                                setTimeout(() => {
+                                    loadQuestion();
+                                }, 800);
+                            });
+                        }, 500);
                     }, 500);
                 } else {
                     showToast(data.message, 'error');
@@ -2111,6 +2359,50 @@
             return questions[positionCode] || questions['backend'];
         }
 
+        // 打字机效果 - AI 消息逐字显示
+        function addMessageWithTyping(content, header, callback) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+
+            let headerHtml = '';
+            if (header) {
+                headerHtml = `<div class="message-header">${header}</div>`;
+            }
+
+            messageDiv.innerHTML = `
+                ${headerHtml}
+                <div class="message-content"></div>
+            `;
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const contentDiv = messageDiv.querySelector('.message-content');
+            let charIndex = 0;
+            const typingSpeed = 30; // 30ms/字
+
+            function typeChar() {
+                if (charIndex < content.length) {
+                    const char = content.charAt(charIndex);
+                    if (char === '\n') {
+                        contentDiv.innerHTML += '<br>';
+                    } else {
+                        contentDiv.innerHTML += char;
+                    }
+                    charIndex++;
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    setTimeout(typeChar, typingSpeed);
+                } else if (callback) {
+                    callback();
+                }
+            }
+
+            typeChar();
+            return messageDiv;
+        }
+
+        // 普通消息 - 直接显示（用于用户消息和系统消息）
         function addMessage(type, content, header) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
@@ -2132,13 +2424,14 @@
             return messageDiv;
         }
 
-        function showTypingIndicator() {
+        // 显示打字机加载动画（三个点跳动）
+        function showTypingIndicator(header) {
             const chatContainer = document.getElementById('chatContainer');
             const typingDiv = document.createElement('div');
             typingDiv.className = 'message ai';
             typingDiv.id = 'typingIndicator';
             typingDiv.innerHTML = `
-                <div class="message-header">🤖 AI 面试官</div>
+                <div class="message-header">${header || '🤖 AI 面试官'}</div>
                 <div class="message-content">
                     <div class="typing-indicator">
                         <span></span>
@@ -2171,13 +2464,14 @@
                 `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
 
             disableSkipButton();
-            showTypingIndicator();
+            showTypingIndicator('🤖 AI 面试官');
 
             setTimeout(() => {
                 hideTypingIndicator();
-                addMessage('ai', question.content, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
-                enableSkipButton();
-            }, 800);
+                addMessageWithTyping(question.content, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`, () => {
+                    enableSkipButton();
+                });
+            }, 500);
         }
 
         function loadQuestion() {
@@ -2190,24 +2484,26 @@
                     `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`;
 
                 disableSkipButton();
-                showTypingIndicator();
+                showTypingIndicator('🤖 AI 面试官');
 
                 if (currentSession && currentSession.interviewMode === 'REAL') {
                     setTimeout(() => {
                         hideTypingIndicator();
                         if (currentQuestionIndex === 0) {
-                            addMessage('ai', '您好，请先做一个简短的自我介绍吧。', `🤖 AI 面试官 · 问题 1`);
-                            enableSkipButton();
+                            addMessageWithTyping('您好，请先做一个简短的自我介绍吧。', `🤖 AI 面试官 · 问题 1`, () => {
+                                enableSkipButton();
+                            });
                         }
-                    }, 800);
+                    }, 500);
                 } else {
                     const positionQuestions = getPositionQuestions();
                     setTimeout(() => {
                         hideTypingIndicator();
                         const question = positionQuestions[currentQuestionIndex];
-                        addMessage('ai', question, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`);
-                        enableSkipButton();
-                    }, 800);
+                        addMessageWithTyping(question, `🤖 AI 面试官 · 问题 ${currentQuestionIndex + 1}`, () => {
+                            enableSkipButton();
+                        });
+                    }, 500);
                 }
             }
         }
@@ -2428,57 +2724,26 @@
             document.getElementById('interviewing').classList.add('hidden');
             document.getElementById('interviewResult').classList.remove('hidden');
 
-            const scoreGrid = document.getElementById('scoreGrid');
-            const isRealMode = currentSession && currentSession.interviewMode === 'REAL';
+            // 获取分数
+            const technicalScore = report.technicalScore || 75;
+            const communicationScore = report.communicationScore || 70;
+            const logicScore = report.logicScore || 72;
+            const adaptabilityScore = report.adaptabilityScore || 68;
+            const matchingScore = report.matchingScore || 75;
+            const overallScore = report.overallScore || 72;
 
-            let scoreHTML = `
-                <div class="score-item">
-                    <div class="score-value">${report.technicalScore || 75}</div>
-                    <div class="score-label">技术能力</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-value">${report.communicationScore || 70}</div>
-                    <div class="score-label">沟通能力</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-value">${report.logicScore || 72}</div>
-                    <div class="score-label">逻辑思维</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-value">${report.adaptabilityScore || 68}</div>
-                    <div class="score-label">应变能力</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-value">${report.matchingScore || 75}</div>
-                    <div class="score-label">岗位匹配</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-value">${report.overallScore || 72}</div>
-                    <div class="score-label">综合评分</div>
-                </div>
-            `;
+            // 更新综合评分
+            document.getElementById('overallScoreValue').textContent = overallScore;
 
-            if (isRealMode) {
-                const emotion = report.emotion || 'NORMAL';
-                const emotionLabel = getEmotionLabel(emotion);
-                const confidenceLevel = report.confidenceLevel || 3;
+            // 更新评分详情条
+            updateScoreDetail('bar1', 'value1', technicalScore);
+            updateScoreDetail('bar2', 'value2', communicationScore);
+            updateScoreDetail('bar3', 'value3', logicScore);
+            updateScoreDetail('bar4', 'value4', adaptabilityScore);
+            updateScoreDetail('bar5', 'value5', matchingScore);
 
-                scoreHTML += `
-                    <div class="score-item" style="grid-column: span 2;">
-                        <div class="score-value" style="font-size: 1.5em;">${emotionLabel}</div>
-                        <div class="score-label">😊 情绪状态</div>
-                        <div style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px;">
-                            ${report.emotionAnalysis || '情绪分析数据暂无'}
-                        </div>
-                    </div>
-                    <div class="score-item">
-                        <div class="score-value">${'⭐'.repeat(confidenceLevel)}</div>
-                        <div class="score-label">自信程度</div>
-                    </div>
-                `;
-            }
-
-            scoreGrid.innerHTML = scoreHTML;
+            // 更新雷达图
+            updateRadarChart(technicalScore, communicationScore, logicScore, adaptabilityScore, matchingScore);
 
             const strengthsList = document.getElementById('strengthsList');
             const strengths = (report.strengths || '候选人展现了良好的专业知识基础，对核心概念有清晰理解。').split(/[,.]/).filter(s => s.trim());
@@ -2490,6 +2755,55 @@
 
             document.getElementById('suggestionsText').textContent =
                 report.suggestions || '建议加强基础知识学习，多做项目实践，阅读优秀开源项目源码。';
+        }
+
+        // 更新评分详情条
+        function updateScoreDetail(barId, valueId, score) {
+            setTimeout(() => {
+                document.getElementById(barId).style.width = score + '%';
+                document.getElementById(valueId).textContent = score;
+            }, 100);
+        }
+
+        // 更新雷达图
+        function updateRadarChart(tech, comm, logic, adapt, match) {
+            // 根据网格正五边形顶点计算中心点和半径
+            // 网格顶点：140,40 (上) 223.3,100.4 (右上) 191.4,199.6 (右下) 88.6,199.6 (左下) 56.7,100.4 (左上)
+            // 中心点：(140, 140), 最大半径：100
+            const centerX = 140;
+            const centerY = 140;
+            const maxRadius = 100;
+
+            function getPoint(score, angle) {
+                const radius = (score / 100) * maxRadius;
+                const radian = (angle * Math.PI) / 180;
+                return {
+                    x: centerX + radius * Math.cos(radian),
+                    y: centerY + radius * Math.sin(radian)
+                };
+            }
+
+            // 五个维度对应的角度（从顶部顺时针，正五边形每个角间隔 72°）
+            // 技术能力 (上 -90°), 沟通能力 (右上 -18°), 逻辑思维 (右下 54°), 应变能力 (左下 126°), 岗位匹配 (左上 198°)
+            const angles = [-90, -18, 54, 126, 198];
+            const scores = [tech, comm, logic, adapt, match];
+
+            let points = '';
+            scores.forEach((score, i) => {
+                const point = getPoint(score, angles[i]);
+                points += (i > 0 ? ' ' : '') + point.x.toFixed(1) + ',' + point.y.toFixed(1);
+            });
+
+            // 更新雷达图区域
+            document.getElementById('radarArea').setAttribute('points', points);
+
+            // 更新数据点位置
+            const pointIds = ['point1', 'point2', 'point3', 'point4', 'point5'];
+            scores.forEach((score, i) => {
+                const point = getPoint(score, angles[i]);
+                document.getElementById(pointIds[i]).setAttribute('cx', point.x.toFixed(1));
+                document.getElementById(pointIds[i]).setAttribute('cy', point.y.toFixed(1));
+            });
         }
 
         function getEmotionLabel(emotion) {
