@@ -552,6 +552,112 @@
             box-shadow: var(--shadow-lg);
         }
 
+        /* ==================== New Split Layout for Interview ==================== */
+        .interview-split-layout {
+            display: flex;
+            flex: 1;
+            gap: 24px;
+            min-height: 0;
+        }
+
+        /* Left Panel - Interviewer Avatar and Controls */
+        .interview-left-panel {
+            width: 220px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-right: 20px;
+            border-right: 1px solid var(--border-light);
+        }
+
+        /* Right Panel - Chat and Input */
+        .interview-right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* Interviewer Avatar Section */
+        .interviewer-avatar-section {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            border-radius: var(--radius-2xl);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            border: 1px solid var(--border-light);
+        }
+
+        .interviewer-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-indigo) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        .interviewer-avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 16px;
+            height: 16px;
+            background: var(--success);
+            border-radius: 50%;
+            border: 3px solid var(--bg-secondary);
+        }
+
+        .interviewer-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .interviewer-title {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        /* Left Panel Controls */
+        .left-panel-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            justify-content: flex-end;
+        }
+
+        .left-panel-controls .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .left-panel-controls .voice-btn {
+            width: 100%;
+        }
+
+        /* Adjust input area for new layout */
+        .interview-right-panel .input-area {
+            border-top: 1px solid var(--border-light);
+            padding-top: 16px;
+            margin-top: auto;
+        }
+
+        .interview-right-panel .chat-container {
+            margin-bottom: 16px;
+        }
+
         .interview-header {
             display: flex;
             justify-content: space-between;
@@ -1416,6 +1522,48 @@
             .history-score {
                 margin-right: 0;
             }
+
+            /* Split layout responsive - stack vertically on mobile */
+            .interview-split-layout {
+                flex-direction: column;
+            }
+
+            .interview-left-panel {
+                width: 100%;
+                flex-direction: row;
+                border-right: none;
+                border-bottom: 1px solid var(--border-light);
+                padding-right: 0;
+                padding-bottom: 16px;
+            }
+
+            .interviewer-avatar-section {
+                flex-direction: row;
+                padding: 12px;
+                gap: 12px;
+            }
+
+            .interviewer-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+
+            .interviewer-name, .interviewer-title {
+                font-size: 12px;
+            }
+
+            .left-panel-controls {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+
+            .left-panel-controls .btn {
+                width: auto;
+                padding: 8px 16px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -1557,25 +1705,45 @@
                         </div>
                     </div>
 
-                    <div class="chat-container" id="chatContainer"></div>
-
-                    <div class="input-area">
-                        <div id="realModeAnswerArea" class="hidden">
-                            <div class="real-mode-answer-area">
-                                <p>🎤 语音回答</p>
-                                <div id="voiceAnswerText" class="voice-answer-text">请点击"开始录音"进行语音回答...</div>
+                    <!-- New Split Layout -->
+                    <div class="interview-split-layout">
+                        <!-- Left Panel: Avatar and Controls -->
+                        <div class="interview-left-panel">
+                            <!-- Interviewer Avatar Section (Top) -->
+                            <div class="interviewer-avatar-section">
+                                <div class="interviewer-avatar">🤖</div>
+                                <div class="interviewer-name">AI 面试官</div>
+                                <div class="interviewer-title">锐捷网络智能面试系统</div>
                             </div>
-                            <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
+
+                            <!-- Control Buttons (Bottom) -->
+                            <div class="left-panel-controls">
+                                <button class="btn btn-secondary voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
+                                <button class="btn btn-secondary voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
+                                <button class="btn btn-secondary btn-skip" onclick="skipQuestion()">⏭️ 跳过</button>
+                                <button class="btn btn-exit" onclick="exitInterview()">🚪 退出</button>
+                            </div>
                         </div>
 
-                        <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答...（Enter 发送，Shift+Enter 换行）"></textarea>
+                        <!-- Right Panel: Chat and Input -->
+                        <div class="interview-right-panel">
+                            <div class="chat-container" id="chatContainer"></div>
 
-                        <div class="interview-actions">
-                            <button class="btn btn-secondary voice-btn" id="voiceBtnReal" onclick="toggleVoiceReal()" style="display: none;">🎤 开始录音</button>
-                            <button class="btn btn-secondary voice-btn" id="voiceBtnPractice" onclick="toggleVoice()">🎤 语音输入</button>
-                            <button class="btn btn-secondary btn-skip" onclick="skipQuestion()">⏭️ 跳过</button>
-                            <button class="btn btn-primary btn-submit" id="submitBtn" onclick="submitAnswer()">发送</button>
-                            <button class="btn btn-exit" onclick="exitInterview()">🚪 退出</button>
+                            <div class="input-area">
+                                <div id="realModeAnswerArea" class="hidden">
+                                    <div class="real-mode-answer-area">
+                                        <p>🎤 语音回答</p>
+                                        <div id="voiceAnswerText" class="voice-answer-text">请点击"开始录音"进行语音回答...</div>
+                                    </div>
+                                    <p class="voice-warning">⚠️ 真实面试模式下回答不可修改，请确认后提交</p>
+                                </div>
+
+                                <textarea class="answer-area" id="answerInput" placeholder="请输入您的回答...（Enter 发送，Shift+Enter 换行）"></textarea>
+
+                                <div class="interview-actions">
+                                    <button class="btn btn-primary btn-submit" id="submitBtn" onclick="submitAnswer()">发送</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
