@@ -315,4 +315,23 @@ public class InterviewController {
             return UserController.ApiResponse.error(e.getMessage());
         }
     }
+    
+    /**
+     * 获取指定问题（真实面试模式下结合简历生成）
+     * @param sessionId 面试会话 ID
+     * @param questionIndex 问题索引（从 0 开始）
+     * @return 问题对象
+     */
+    @GetMapping("/{sessionId}/question/{questionIndex}")
+    public UserController.ApiResponse<Question> getQuestion(
+            @PathVariable Long sessionId,
+            @PathVariable int questionIndex) {
+        try {
+            Question question = interviewService.getQuestionForRealInterview(sessionId, questionIndex);
+            return UserController.ApiResponse.success(question);
+        } catch (Exception e) {
+            log.error("获取问题失败", e);
+            return UserController.ApiResponse.error(e.getMessage());
+        }
+    }
 }

@@ -36,6 +36,13 @@ public class QuestionService {
     public Optional<Question> findById(Long id) {
         return questionRepository.findById(id);
     }
+    
+    /**
+     * 根据 ID 查询问题（别名方法）
+     */
+    public Optional<Question> getQuestionById(Long id) {
+        return findById(id);
+    }
 
     /**
      * 根据岗位查询问题
