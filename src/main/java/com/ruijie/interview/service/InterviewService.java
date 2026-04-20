@@ -266,6 +266,9 @@ public class InterviewService {
         session.setConversationHistory(appendConversation(session.getConversationHistory(), 
             questionIndex, answer));
 
+        // 异步评分当前回答（必须在判断是否结束之前调用，确保最后一题也能被评分）
+        asyncScoreAnswer(sessionId, currentQuestion, answer, answerType, false);
+
         // 判断是否结束
         if (session.getAnsweredQuestions() >= session.getTotalQuestions()) {
             session.setStatus("COMPLETED");
@@ -276,11 +279,19 @@ public class InterviewService {
             
             sessionRepository.save(session);
             
-            // 初始化评分状态跟踪
-            ScoringStatus status = new ScoringStatus(session.getTotalQuestions());
+            // 初始化评分状态跟踪（保留之前跳过题目已累积的计数）
+            ScoringStatus existingStatus = scoringStatusMap.get(sessionId);
+            ScoringStatus status;
+            if (existingStatus == null) {
+                // 没有跳过题目，从头开始
+                status = new ScoringStatus(session.getTotalQuestions());
+            } else {
+                // 已有跳过题目累积的计数，保留已有进度
+                status = existingStatus;
+            }
             scoringStatusMap.put(sessionId, status);
             
-            // 异步生成评估报告（包含异步评分）
+            // 异步生成评估报告（等待所有评分完成后）
             asyncGenerateReportWithScoring(session);
             
             return new InterviewResponse(
@@ -290,9 +301,6 @@ public class InterviewService {
                 null  // 报告稍后生成
             );
         }
-
-        // 异步评分当前回答
-        asyncScoreAnswer(sessionId, currentQuestion, answer, answerType, false);
 
         // 获取下一个问题
         Question nextQuestion = getNextQuestion(session, session.getAnsweredQuestions());
@@ -500,6 +508,17 @@ public class InterviewService {
         session.setAnsweredQuestions(session.getAnsweredQuestions() + 1);
         session.setConversationHistory(appendConversation(session.getConversationHistory(), 
             questionIndex, "(跳过)"));
+
+        // 更新评分状态（跳过题目视为已评分，避免异步报告等待超时）
+        ScoringStatus status = scoringStatusMap.get(sessionId);
+        if (status == null) {
+            // 如果状态不存在，创建一个新的（例如第一题就跳过的情况）
+            status = new ScoringStatus(session.getTotalQuestions());
+            scoringStatusMap.put(sessionId, status);
+        }
+        status.incrementScored();
+        log.info("[跳过题目] 评分进度：{}/{} - 会话 ID: {}", 
+            status.scoredQuestions, status.totalQuestions, sessionId);
 
         // 判断是否结束
         if (session.getAnsweredQuestions() >= session.getTotalQuestions()) {
