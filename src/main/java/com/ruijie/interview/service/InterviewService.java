@@ -1266,7 +1266,8 @@ public class InterviewService {
     }
 
     /**
-     * 基于各题平均分和大模型分析生成评估报告
+     * 基于大模型整体评估生成评估报告
+     * 修改：直接使用大模型基于整体面试对话历史的评分，不再使用每题评分的平均值
      */
     @Transactional
     public EvaluationReport generateEvaluationReportFromScores(InterviewSession session) {
@@ -1276,44 +1277,22 @@ public class InterviewService {
             return createDefaultReport(session);
         }
 
-        int totalTechnical = 0;
-        int totalCommunication = 0;
-        int totalLogic = 0;
-        int totalAdaptability = 0;
-        int totalMatching = 0;
-        int totalOverall = 0;
-        int answeredCount = 0;
+        // 统计跳过题目数量（用于提示）
         int skippedCount = 0;
-        
         for (Answer answer : answers) {
             if (answer.getIsSkipped() != null && answer.getIsSkipped()) {
                 skippedCount++;
-                continue;
-            }
-            
-            if (answer.getOverallScore() != null) {
-                totalTechnical += answer.getTechnicalScore() != null ? answer.getTechnicalScore() : 10;
-                totalCommunication += answer.getCommunicationScore() != null ? answer.getCommunicationScore() : 10;
-                totalLogic += answer.getLogicScore() != null ? answer.getLogicScore() : 10;
-                totalAdaptability += answer.getAdaptabilityScore() != null ? answer.getAdaptabilityScore() : 10;
-                totalMatching += answer.getMatchingScore() != null ? answer.getMatchingScore() : 10;
-                totalOverall += answer.getOverallScore();
-                answeredCount++;
             }
         }
         
-        int avgTechnical = answeredCount > 0 ? totalTechnical / answeredCount : 10;
-        int avgCommunication = answeredCount > 0 ? totalCommunication / answeredCount : 10;
-        int avgLogic = answeredCount > 0 ? totalLogic / answeredCount : 10;
-        int avgAdaptability = answeredCount > 0 ? totalAdaptability / answeredCount : 10;
-        int avgMatching = answeredCount > 0 ? totalMatching / answeredCount : 10;
-        int avgOverall = answeredCount > 0 ? totalOverall / answeredCount : 10;
-        
-        // 计算综合评分：五个维度的加权平均（权重各 20%）减去跳过惩罚
-        int skipPenalty = skippedCount * 2;
-        int comprehensiveScore = (int) ((avgTechnical * 0.2 + avgCommunication * 0.2 + avgLogic * 0.2 + avgAdaptability * 0.2 + avgMatching * 0.2));
-        comprehensiveScore = Math.max(10, comprehensiveScore - skipPenalty);
-        
+        // 默认值
+        int technicalScore = 50;
+        int communicationScore = 50;
+        int logicScore = 50;
+        int adaptabilityScore = 50;
+        int matchingScore = 50;
+        int overallScore = 50;
+        int comprehensiveScore = 50;
         String strengths = "候选人完成了面试";
         String weaknesses = "部分问题可以回答得更深入";
         String suggestions = "建议继续学习和实践";
@@ -1323,17 +1302,39 @@ public class InterviewService {
             Position position = positionService.findByCode(session.getPositionId()).orElse(null);
             String positionName = position != null ? position.getName() : "技术岗位";
             
-            log.info("[大模型评估报告] 开始生成评估报告 - 会话 ID: {}, 岗位：{}", session.getId(), positionName);
+            log.info("[大模型整体评估] 开始生成评估报告 - 会话 ID: {}, 岗位：{}, 跳过题目数：{}", 
+                session.getId(), positionName, skippedCount);
             
+            // 调用大模型 API 进行整体评估
             String evalJson = llmService.generateEvaluationReport(
                 session.getConversationHistory(), 
                 positionName
             );
             
-            log.info("[大模型评估报告] LLM 返回结果：{}", evalJson);
+            log.info("[大模型整体评估] LLM 返回结果：{}", evalJson);
             
             JSONObject evalData = parseEvaluationJson(evalJson);
             
+            // 从大模型返回中直接获取各维度分数
+            technicalScore = evalData.getInteger("technicalScore");
+            communicationScore = evalData.getInteger("communicationScore");
+            logicScore = evalData.getInteger("logicScore");
+            adaptabilityScore = evalData.getInteger("adaptabilityScore");
+            matchingScore = evalData.getInteger("matchingScore");
+            overallScore = evalData.getInteger("overallScore");
+            
+            // 综合评分：五个维度的加权平均（权重各 20%）
+            int baseScore = (int) ((technicalScore * 0.2 + communicationScore * 0.2 + 
+                                    logicScore * 0.2 + adaptabilityScore * 0.2 + matchingScore * 0.2));
+            
+            // 减去跳过惩罚：每跳过一题扣 2 分，作为最终分数
+            int skipPenalty = skippedCount * 2;
+            comprehensiveScore = Math.max(10, baseScore - skipPenalty);
+            
+            // overallScore 使用应用跳过惩罚后的最终分数
+            overallScore = comprehensiveScore;
+            
+            // 获取文本评价
             strengths = evalData.getString("strengths");
             weaknesses = evalData.getString("weaknesses");
             suggestions = evalData.getString("suggestions");
@@ -1352,25 +1353,24 @@ public class InterviewService {
                 recommendedResources = "推荐学习相关技术文档和开源项目";
             }
             
-            log.info("[大模型评估报告] 解析成功 - strengths: {}, weaknesses: {}", 
-                strengths.length() > 50 ? strengths.substring(0, 50) + "..." : strengths,
-                weaknesses.length() > 50 ? weaknesses.substring(0, 50) + "..." : weaknesses);
+            log.info("[大模型整体评估] 解析成功 - 综合分数：{}, strengths: {}", 
+                comprehensiveScore, strengths.length() > 50 ? strengths.substring(0, 50) + "..." : strengths);
                 
         } catch (Exception e) {
-            log.error("[大模型评估报告] 生成失败，使用默认反馈文本", e);
+            log.error("[大模型整体评估] 生成失败，使用默认分数", e);
         }
         
         EvaluationReport report = new EvaluationReport();
         report.setSessionId(session.getId());
         report.setUserId(session.getUserId());
         report.setPositionId(session.getPositionId());
-        report.setTechnicalScore(avgTechnical);
-        report.setCommunicationScore(avgCommunication);
-        report.setLogicScore(avgLogic);
-        report.setAdaptabilityScore(avgAdaptability);
-        report.setMatchingScore(avgMatching);
+        report.setTechnicalScore(technicalScore);
+        report.setCommunicationScore(communicationScore);
+        report.setLogicScore(logicScore);
+        report.setAdaptabilityScore(adaptabilityScore);
+        report.setMatchingScore(matchingScore);
         report.setComprehensiveScore(comprehensiveScore);
-        report.setOverallScore(avgOverall);  // 保留字段用于兼容
+        report.setOverallScore(overallScore);
         report.setStrengths(strengths);
         report.setWeaknesses(weaknesses);
         report.setSuggestions(suggestions);
