@@ -52,19 +52,22 @@ public class Answer {
 
     // 评分相关字段
     @Column
-    private Integer technicalScore;
+    private Integer technicalScore;       // 技术能力评分 (0-100)
 
     @Column
-    private Integer communicationScore;
+    private Integer communicationScore;   // 表达能力评分 (0-100)
 
     @Column
-    private Integer logicScore;
+    private Integer logicScore;           // 逻辑思维评分 (0-100)
 
     @Column
-    private Integer knowledgeDepth;
+    private Integer adaptabilityScore;    // 应变能力评分 (0-100)
 
     @Column
-    private Integer overallScore;
+    private Integer matchingScore;        // 岗位匹配度评分 (0-100)
+
+    @Column
+    private Integer overallScore;         // 单题综合评分 (0-100) - 由 LLM 评估生成
 
     @Column(columnDefinition = "TEXT")
     private String evaluationComment;
@@ -179,12 +182,20 @@ public class Answer {
         this.logicScore = logicScore;
     }
 
-    public Integer getKnowledgeDepth() {
-        return knowledgeDepth;
+    public Integer getAdaptabilityScore() {
+        return adaptabilityScore;
     }
 
-    public void setKnowledgeDepth(Integer knowledgeDepth) {
-        this.knowledgeDepth = knowledgeDepth;
+    public void setAdaptabilityScore(Integer adaptabilityScore) {
+        this.adaptabilityScore = adaptabilityScore;
+    }
+
+    public Integer getMatchingScore() {
+        return matchingScore;
+    }
+
+    public void setMatchingScore(Integer matchingScore) {
+        this.matchingScore = matchingScore;
     }
 
     public Integer getOverallScore() {

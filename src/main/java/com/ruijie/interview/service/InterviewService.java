@@ -309,6 +309,7 @@ public class InterviewService {
     
     /**
      * 异步评分回答
+     * 修复：先查询已有的临时答案记录，然后更新它，而不是创建新记录
      */
     private void asyncScoreAnswer(Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
         scoringExecutor.submit(() -> {
@@ -316,8 +317,25 @@ public class InterviewService {
                 log.info("[异步评分] 开始异步评分 - 会话 ID: {}, 问题：{}", sessionId, 
                     question != null ? question.getContent() : "N/A");
                 
-                // 执行实际评分
-                Answer scoredAnswer = scoreAnswerWithRag(sessionId, question, answer, answerType, isSkipped);
+                // 先查询已有的答案记录（临时分数记录）
+                List<Answer> existingAnswers = answerRepository.findBySessionIdOrderByQuestionId(sessionId);
+                Answer existingAnswer = null;
+                for (Answer a : existingAnswers) {
+                    if (a.getQuestionId().equals(question != null ? question.getId() : 0L)) {
+                        existingAnswer = a;
+                        break;
+                    }
+                }
+                
+                if (existingAnswer != null && "正在评分中...".equals(existingAnswer.getEvaluationComment())) {
+                    // 找到临时答案记录，更新它而不是创建新记录
+                    log.info("[异步评分] 找到临时答案记录，将更新评分 - 会话 ID: {}, 答案 ID: {}", sessionId, existingAnswer.getId());
+                    updateAnswerWithScore(existingAnswer, sessionId, question, answer, answerType, isSkipped);
+                } else {
+                    // 没有找到临时记录，创建新记录（兼容旧逻辑）
+                    log.info("[异步评分] 未找到临时答案记录，创建新记录 - 会话 ID: {}", sessionId);
+                    scoreAnswerWithRag(sessionId, question, answer, answerType, isSkipped);
+                }
                 
                 // 更新已评分计数
                 ScoringStatus status = scoringStatusMap.get(sessionId);
@@ -327,11 +345,45 @@ public class InterviewService {
                         status.scoredQuestions, status.totalQuestions, status.getProgress());
                 }
                 
-                log.info("[异步评分] 评分完成 - 会话 ID: {}, 总体分数：{}", sessionId, scoredAnswer.getOverallScore());
+                log.info("[异步评分] 评分完成 - 会话 ID: {}", sessionId);
             } catch (Exception e) {
                 log.error("[异步评分] 评分失败 - 会话 ID: {}", sessionId, e);
             }
         });
+    }
+    
+    /**
+     * 更新已有答案记录的评分
+     */
+    private void updateAnswerWithScore(Answer existingAnswer, Long sessionId, Question question, String answer, String answerType, boolean isSkipped) {
+        try {
+            // 获取问题类别，决定评分方式
+            String category = question.getCategory() != null ? question.getCategory() : "技术知识";
+            boolean useRag = shouldUseRagScoring(category);
+            
+            if (useRag) {
+                // 使用 RAG 增强评分
+                scoreWithRag(existingAnswer, sessionId, question, answer, category);
+            } else {
+                // 使用纯 LLM 评分（不检索知识库）
+                scoreWithLlmOnly(existingAnswer, sessionId, question, answer, category);
+            }
+            
+            // 保存更新后的答案
+            answerRepository.save(existingAnswer);
+            log.info("[异步评分] 答案记录已更新 - 会话 ID: {}, 总体分数：{}", sessionId, existingAnswer.getOverallScore());
+        } catch (Exception e) {
+            log.error("[异步评分] 更新答案失败 - 会话 ID: {}", sessionId, e);
+            // 失败时给默认分数
+            existingAnswer.setTechnicalScore(50);
+            existingAnswer.setCommunicationScore(50);
+            existingAnswer.setLogicScore(50);
+            existingAnswer.setAdaptabilityScore(50);
+            existingAnswer.setMatchingScore(50);
+            existingAnswer.setOverallScore(50);
+            existingAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。");
+            answerRepository.save(existingAnswer);
+        }
     }
     
     /**
@@ -343,9 +395,9 @@ public class InterviewService {
                 Long sessionId = session.getId();
                 ScoringStatus status = scoringStatusMap.get(sessionId);
                 
-                // 等待所有评分完成（最多等待 5 分钟）
+                // 等待所有评分完成（最多等待 10 分钟，给 LLM 足够时间响应）
                 long startTime = System.currentTimeMillis();
-                long timeout = 5 * 60 * 1000; // 5 分钟
+                long timeout = 10 * 60 * 1000; // 10 分钟
                 
                 while (status != null && !status.completed && 
                        status.scoredQuestions < status.totalQuestions &&
@@ -392,7 +444,8 @@ public class InterviewService {
             userAnswer.setTechnicalScore(10);
             userAnswer.setCommunicationScore(10);
             userAnswer.setLogicScore(10);
-            userAnswer.setKnowledgeDepth(10);
+            userAnswer.setAdaptabilityScore(10);
+            userAnswer.setMatchingScore(10);
             userAnswer.setOverallScore(10);
             userAnswer.setEvaluationComment("候选人跳过此问题或回答为空");
         } else {
@@ -400,7 +453,8 @@ public class InterviewService {
             userAnswer.setTechnicalScore(50);
             userAnswer.setCommunicationScore(50);
             userAnswer.setLogicScore(50);
-            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setAdaptabilityScore(50);
+            userAnswer.setMatchingScore(50);
             userAnswer.setOverallScore(50);
             userAnswer.setEvaluationComment("正在评分中...");
         }
@@ -435,7 +489,8 @@ public class InterviewService {
         skippedAnswer.setTechnicalScore(10);
         skippedAnswer.setCommunicationScore(10);
         skippedAnswer.setLogicScore(10);
-        skippedAnswer.setKnowledgeDepth(10);
+        skippedAnswer.setAdaptabilityScore(10);
+        skippedAnswer.setMatchingScore(10);
         skippedAnswer.setOverallScore(10);
         skippedAnswer.setEvaluationComment("候选人跳过此问题");
         answerRepository.save(skippedAnswer);
@@ -506,7 +561,8 @@ public class InterviewService {
             userAnswer.setTechnicalScore(10);
             userAnswer.setCommunicationScore(10);
             userAnswer.setLogicScore(10);
-            userAnswer.setKnowledgeDepth(10);
+            userAnswer.setAdaptabilityScore(10);
+            userAnswer.setMatchingScore(10);
             userAnswer.setOverallScore(10);
             userAnswer.setEvaluationComment("候选人跳过此问题或回答为空");
         } else {
@@ -573,21 +629,23 @@ public class InterviewService {
                 
                 log.info("[RAG 评分] LLM 返回结果：{}", evalJson);
                 
-                JSONObject evalData = parseScoreJson(evalJson);
+                JSONObject evalData = parseScoreJsonWithMatching(evalJson);
                 
                 Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
                 Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
                 Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
-                Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
+                Integer adaptabilityScore = ensureMinScore(evalData.getInteger("adaptabilityScore"));
+                Integer matchingScore = ensureMinScore(evalData.getInteger("matchingScore"));
                 Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
                 
                 // 验证分数是否有效（不能全是默认值 50）
                 if (technicalScore != 50 || communicationScore != 50 || 
-                    logicScore != 50 || knowledgeDepthScore != 50 || overallScore != 50) {
+                    logicScore != 50 || adaptabilityScore != 50 || matchingScore != 50 || overallScore != 50) {
                     userAnswer.setTechnicalScore(technicalScore);
                     userAnswer.setCommunicationScore(communicationScore);
                     userAnswer.setLogicScore(logicScore);
-                    userAnswer.setKnowledgeDepth(knowledgeDepthScore);
+                    userAnswer.setAdaptabilityScore(adaptabilityScore);
+                    userAnswer.setMatchingScore(matchingScore);
                     userAnswer.setOverallScore(overallScore);
                     userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
                     scored = true;
@@ -632,7 +690,8 @@ public class InterviewService {
             userAnswer.setTechnicalScore(50);
             userAnswer.setCommunicationScore(50);
             userAnswer.setLogicScore(50);
-            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setAdaptabilityScore(50);
+            userAnswer.setMatchingScore(50);
             userAnswer.setOverallScore(50);
             userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。建议检查网络连接或 API 配置。");
         }
@@ -666,21 +725,23 @@ public class InterviewService {
                 
                 log.info("[LLM 评分] LLM 返回结果：{}", evalJson);
                 
-                JSONObject evalData = parseScoreJson(evalJson);
+                JSONObject evalData = parseScoreJsonWithMatching(evalJson);
                 
                 Integer technicalScore = ensureMinScore(evalData.getInteger("technicalScore"));
                 Integer communicationScore = ensureMinScore(evalData.getInteger("communicationScore"));
                 Integer logicScore = ensureMinScore(evalData.getInteger("logicScore"));
-                Integer knowledgeDepthScore = ensureMinScore(evalData.getInteger("knowledgeDepth"));
+                Integer adaptabilityScore = ensureMinScore(evalData.getInteger("adaptabilityScore"));
+                Integer matchingScore = ensureMinScore(evalData.getInteger("matchingScore"));
                 Integer overallScore = ensureMinScore(evalData.getInteger("overallScore"));
                 
                 // 验证分数是否有效
                 if (technicalScore != 50 || communicationScore != 50 || 
-                    logicScore != 50 || knowledgeDepthScore != 50 || overallScore != 50) {
+                    logicScore != 50 || adaptabilityScore != 50 || matchingScore != 50 || overallScore != 50) {
                     userAnswer.setTechnicalScore(technicalScore);
                     userAnswer.setCommunicationScore(communicationScore);
                     userAnswer.setLogicScore(logicScore);
-                    userAnswer.setKnowledgeDepth(knowledgeDepthScore);
+                    userAnswer.setAdaptabilityScore(adaptabilityScore);
+                    userAnswer.setMatchingScore(matchingScore);
                     userAnswer.setOverallScore(overallScore);
                     userAnswer.setEvaluationComment(evalData.getString("evaluationComment"));
                     scored = true;
@@ -723,7 +784,8 @@ public class InterviewService {
             userAnswer.setTechnicalScore(50);
             userAnswer.setCommunicationScore(50);
             userAnswer.setLogicScore(50);
-            userAnswer.setKnowledgeDepth(50);
+            userAnswer.setAdaptabilityScore(50);
+            userAnswer.setMatchingScore(50);
             userAnswer.setOverallScore(50);
             userAnswer.setEvaluationComment("评分系统暂时不可用，已使用默认分数。");
         }
@@ -741,8 +803,9 @@ public class InterviewService {
         prompt.append("1. technicalScore（技术分数 0-100）：考察技术深度和专业性\n");
         prompt.append("2. communicationScore（沟通分数 0-100）：考察表达清晰度和逻辑性\n");
         prompt.append("3. logicScore（逻辑分数 0-100）：考察回答的结构和条理性\n");
-        prompt.append("4. knowledgeDepth（知识深度 0-100）：考察知识广度和深度\n");
-        prompt.append("5. overallScore（综合分数 0-100）：综合以上维度的整体评价\n\n");
+        prompt.append("4. adaptabilityScore（应变能力 0-100）：考察面对问题的反应速度和知识广度\n");
+        prompt.append("5. matchingScore（岗位匹配度 0-100）：回答内容与岗位要求的匹配程度\n");
+        prompt.append("6. overallScore（综合分数 0-100）：综合以上维度的整体评价\n\n");
         
         // 根据类别调整评分侧重点
         if ("开场".equals(category)) {
@@ -770,7 +833,7 @@ public class InterviewService {
         prompt.append("\n【问题】\n").append(question);
         prompt.append("\n\n【候选人回答】\n").append(answer);
         prompt.append("\n\n请返回 JSON 格式的评分结果，包含以下字段：\n");
-        prompt.append("technicalScore, communicationScore, logicScore, knowledgeDepth, overallScore, evaluationComment\n\n");
+        prompt.append("technicalScore, communicationScore, logicScore, adaptabilityScore, matchingScore, overallScore, evaluationComment\n\n");
         prompt.append("evaluationComment 请包含：\n");
         prompt.append("1. 优点（strengths）\n");
         prompt.append("2. 不足（weaknesses）\n");
@@ -804,7 +867,7 @@ public class InterviewService {
     }
 
     /**
-     * 解析评分 JSON
+     * 解析评分 JSON（旧版本，兼容 knowledgeDepth 字段）
      */
     private JSONObject parseScoreJson(String jsonStr) {
         try {
@@ -820,10 +883,53 @@ public class InterviewService {
             defaultJson.put("technicalScore", 50);
             defaultJson.put("communicationScore", 50);
             defaultJson.put("logicScore", 50);
-            defaultJson.put("knowledgeDepth", 50);
+            defaultJson.put("adaptabilityScore", 50);
+            defaultJson.put("matchingScore", 50);
             defaultJson.put("overallScore", 50);
             defaultJson.put("evaluationComment", "评分解析失败");
             return defaultJson;
+        }
+    }
+    
+    /**
+     * 解析评分 JSON（新版本，支持 matchingScore 字段）
+     */
+    private JSONObject parseScoreJsonWithMatching(String jsonStr) {
+        try {
+            int start = jsonStr.indexOf("{");
+            int end = jsonStr.lastIndexOf("}");
+            if (start >= 0 && end > start) {
+                jsonStr = jsonStr.substring(start, end + 1);
+            }
+            JSONObject json = JSON.parseObject(jsonStr);
+            // 确保所有必需字段存在
+            ensureScoreField(json, "technicalScore", 50);
+            ensureScoreField(json, "communicationScore", 50);
+            ensureScoreField(json, "logicScore", 50);
+            ensureScoreField(json, "adaptabilityScore", 50);
+            ensureScoreField(json, "matchingScore", 50);
+            ensureScoreField(json, "overallScore", 50);
+            return json;
+        } catch (Exception e) {
+            log.error("解析评分 JSON 失败", e);
+            JSONObject defaultJson = new JSONObject();
+            defaultJson.put("technicalScore", 50);
+            defaultJson.put("communicationScore", 50);
+            defaultJson.put("logicScore", 50);
+            defaultJson.put("adaptabilityScore", 50);
+            defaultJson.put("matchingScore", 50);
+            defaultJson.put("overallScore", 50);
+            defaultJson.put("evaluationComment", "评分解析失败");
+            return defaultJson;
+        }
+    }
+    
+    /**
+     * 确保评分字段存在
+     */
+    private void ensureScoreField(JSONObject json, String field, int defaultValue) {
+        if (!json.containsKey(field) || json.getInteger(field) == null) {
+            json.put(field, defaultValue);
         }
     }
 
@@ -1154,7 +1260,8 @@ public class InterviewService {
         int totalTechnical = 0;
         int totalCommunication = 0;
         int totalLogic = 0;
-        int totalKnowledge = 0;
+        int totalAdaptability = 0;
+        int totalMatching = 0;
         int totalOverall = 0;
         int answeredCount = 0;
         int skippedCount = 0;
@@ -1169,7 +1276,8 @@ public class InterviewService {
                 totalTechnical += answer.getTechnicalScore() != null ? answer.getTechnicalScore() : 10;
                 totalCommunication += answer.getCommunicationScore() != null ? answer.getCommunicationScore() : 10;
                 totalLogic += answer.getLogicScore() != null ? answer.getLogicScore() : 10;
-                totalKnowledge += answer.getKnowledgeDepth() != null ? answer.getKnowledgeDepth() : 10;
+                totalAdaptability += answer.getAdaptabilityScore() != null ? answer.getAdaptabilityScore() : 10;
+                totalMatching += answer.getMatchingScore() != null ? answer.getMatchingScore() : 10;
                 totalOverall += answer.getOverallScore();
                 answeredCount++;
             }
@@ -1178,11 +1286,14 @@ public class InterviewService {
         int avgTechnical = answeredCount > 0 ? totalTechnical / answeredCount : 10;
         int avgCommunication = answeredCount > 0 ? totalCommunication / answeredCount : 10;
         int avgLogic = answeredCount > 0 ? totalLogic / answeredCount : 10;
-        int avgKnowledge = answeredCount > 0 ? totalKnowledge / answeredCount : 10;
+        int avgAdaptability = answeredCount > 0 ? totalAdaptability / answeredCount : 10;
+        int avgMatching = answeredCount > 0 ? totalMatching / answeredCount : 10;
         int avgOverall = answeredCount > 0 ? totalOverall / answeredCount : 10;
         
+        // 计算综合评分：五个维度的加权平均（权重各 20%）减去跳过惩罚
         int skipPenalty = skippedCount * 2;
-        avgOverall = Math.max(10, avgOverall - skipPenalty);
+        int comprehensiveScore = (int) ((avgTechnical * 0.2 + avgCommunication * 0.2 + avgLogic * 0.2 + avgAdaptability * 0.2 + avgMatching * 0.2));
+        comprehensiveScore = Math.max(10, comprehensiveScore - skipPenalty);
         
         String strengths = "候选人完成了面试";
         String weaknesses = "部分问题可以回答得更深入";
@@ -1237,9 +1348,10 @@ public class InterviewService {
         report.setTechnicalScore(avgTechnical);
         report.setCommunicationScore(avgCommunication);
         report.setLogicScore(avgLogic);
-        report.setAdaptabilityScore(avgKnowledge);
-        report.setMatchingScore(avgOverall);
-        report.setOverallScore(avgOverall);
+        report.setAdaptabilityScore(avgAdaptability);
+        report.setMatchingScore(avgMatching);
+        report.setComprehensiveScore(comprehensiveScore);
+        report.setOverallScore(avgOverall);  // 保留字段用于兼容
         report.setStrengths(strengths);
         report.setWeaknesses(weaknesses);
         report.setSuggestions(suggestions);

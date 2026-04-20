@@ -17,7 +17,8 @@ public class EvaluationReport {
     public EvaluationReport(Long sessionId, Long userId, String positionId, 
                             Integer technicalScore, Integer communicationScore,
                             Integer logicScore, Integer adaptabilityScore,
-                            Integer matchingScore, Integer overallScore,
+                            Integer matchingScore, Integer comprehensiveScore,
+                            Integer overallScore,
                             String speechRate, String clarity, String confidence,
                             String strengths, String weaknesses, 
                             String suggestions, String recommendedResources) {
@@ -29,6 +30,7 @@ public class EvaluationReport {
         this.logicScore = logicScore;
         this.adaptabilityScore = adaptabilityScore;
         this.matchingScore = matchingScore;
+        this.comprehensiveScore = comprehensiveScore;
         this.overallScore = overallScore;
         this.speechRate = speechRate;
         this.clarity = clarity;
@@ -68,11 +70,15 @@ public class EvaluationReport {
     @Column
     private Integer adaptabilityScore;
 
-    // 岗位匹配度评分 (0-100)
+    // 岗位匹配度评分 (0-100) - 由 LLM 评估生成
     @Column
     private Integer matchingScore;
 
-    // 综合评分 (0-100)
+    // 综合评分 (0-100) - 由五个维度的加权平均计算得出
+    @Column
+    private Integer comprehensiveScore;
+
+    // 总体评分 (0-100) - 保留字段，用于兼容
     @Column
     private Integer overallScore;
 
@@ -443,5 +449,13 @@ public class EvaluationReport {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getComprehensiveScore() {
+        return comprehensiveScore;
+    }
+
+    public void setComprehensiveScore(Integer comprehensiveScore) {
+        this.comprehensiveScore = comprehensiveScore;
     }
 }

@@ -344,11 +344,12 @@ public class LlmService {
             "- 30-49 分：回答较差，有明显错误或遗漏" +
             "- 0-29 分：回答很差，几乎完全错误或未作答" +
             "评分维度：" +
-            "1. 技术正确性 (technicalScore) - 回答是否符合技术事实" +
-            "2. 知识深度 (knowledgeDepth) - 回答的深度和广度" +
-            "3. 逻辑思维 (logicScore) - 回答是否逻辑清晰" +
-            "4. 表达清晰 (communicationScore) - 表达是否清晰易懂" +
-            "5. 综合评分 (overallScore) - 综合以上维度的平均分" +
+            "1. technicalScore（技术能力 0-100）- 回答是否符合技术事实，考察技术深度和专业性" +
+            "2. communicationScore（表达能力 0-100）- 表达是否清晰易懂，考察表达清晰度和逻辑性" +
+            "3. logicScore（逻辑思维 0-100）- 回答是否逻辑清晰，考察回答的结构和条理性" +
+            "4. adaptabilityScore（应变能力 0-100）- 考察面对问题的反应速度和知识广度" +
+            "5. matchingScore（岗位匹配度 0-100）- 回答内容与岗位要求的匹配程度" +
+            "6. overallScore（单题综合评分 0-100）- 综合以上维度的整体评价" +
             "同时返回简短评价 (evaluationComment)，指出亮点和不足。" +
             "请以 JSON 格式返回评估结果，只返回 JSON 不要有其他说明。",
             position, category
